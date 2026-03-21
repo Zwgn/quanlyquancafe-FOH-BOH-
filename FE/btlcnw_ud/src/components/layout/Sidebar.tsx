@@ -12,7 +12,7 @@ import {
   MdTableRestaurant
 } from "react-icons/md";
 import { useAppContext } from "../../context/AppContext";
-import logo from "../../assets/images/logo.svg";
+import logo from "../../assets/images/logo.png";
 import "../../assets/styles/sidebar.css";
 
 interface NavItem {
