@@ -1,0 +1,94 @@
+.sidebar {
+  width: 250px;
+  background-color: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.sidebar-brand-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar-brand-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #334155;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+.sidebar-link:hover {
+  background-color: #eff6ff;
+}
+
+.sidebar-link-active {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+.sidebar-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.sidebar-signout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background-color: #ffffff;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 600;
+}
+
+.sidebar-signout:hover {
+  background-color: #f8fafc;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 100%;
+  }
+}

@@ -1,0 +1,17 @@
+.stat-card {
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  padding: 16px;
+  background-color: #f8fbff;
+}
+
+.stat-card-title {
+  color: #475569;
+  font-weight: 600;
+}
+
+.stat-card-value {
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 24px;
+}
