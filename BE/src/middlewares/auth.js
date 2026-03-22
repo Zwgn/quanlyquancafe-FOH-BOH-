@@ -11,7 +11,7 @@ const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return error(res, 'Access denied. No token provided.', 401);
+      return error(res, 'Từ chối truy cập. Không có token..', 401);
     }
 
     // Extract token
@@ -21,15 +21,15 @@ const authMiddleware = (req, res, next) => {
     const decoded = verifyToken(token);
 
     if (!decoded) {
-      return error(res, 'Invalid or expired token', 401);
+      return error(res, 'Token không hợp lệ hoặc đã hết hạn.', 401);
     }
 
     // Attach user info to request
     req.user = decoded;
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err);
-    return error(res, 'Authentication failed', 401);
+    console.error('Lỗi middleware xác thực:', err);
+    return error(res, 'Xác thực thất bại.', 401);
   }
 };
 
@@ -39,11 +39,11 @@ const authMiddleware = (req, res, next) => {
 const requireRole = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return error(res, 'Authentication required', 401);
+      return error(res, 'Từ chối truy cập. Yêu cầu xác thực.', 401);
     }
 
     if (!roles.includes(req.user.role)) {
-      return error(res, 'Access denied. Insufficient permissions.', 403);
+      return error(res, 'Từ chối truy cập. Quyền hạn không đủ.', 403);
     }
 
     next();

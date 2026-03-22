@@ -2,10 +2,12 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { login } from "../services/authService";
+import { useAppContext } from "../context/AppContext";
 import "../assets/styles/login.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { setUsername: setAppUsername } = useAppContext();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -22,6 +24,9 @@ const LoginPage = () => {
       const { user, token } = await login({ username, password });
 
       localStorage.setItem("user", JSON.stringify(user));
+      setAppUsername(
+        user.displayName ?? user.name ?? user.fullName ?? user.username
+      );
 
       if (token) {
         localStorage.setItem("authToken", token);
@@ -31,7 +36,7 @@ const LoginPage = () => {
 
       navigate("/dashboard");
     } catch (requestError) {
-      const fallbackMessage = "Invalid username or password.";
+      const fallbackMessage = "Tên người dùng hoặc mật khẩu không đúng.";
 
       if (requestError instanceof AxiosError) {
         const apiMessage =
@@ -55,7 +60,7 @@ const LoginPage = () => {
           <h1 className="login-hero-title">ADMIN DASHBOARD</h1>
           <p className="login-hero-description">
             Hệ thống quản lý quán cafe giúp bạn theo dõi đơn hàng,
-            quản lý nhân viên,kiểm soát kho và tối ưu hoạt động 
+            quản lý nhân viên,kiểm soát kho và tối ưu hoạt động
             kinh doanh một cách hiệu quả.
           </p>
         </div>
@@ -66,10 +71,6 @@ const LoginPage = () => {
       <section className="login-form-shell">
         <form className="login-card" onSubmit={handleSubmit}>
           <h2 className="login-card-title">Sign in</h2>
-          <p className="login-card-subtitle">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-          </p>
-
           <div className="login-field">
             <label htmlFor="username">User name</label>
             <input

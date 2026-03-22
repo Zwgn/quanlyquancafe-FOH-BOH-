@@ -6,8 +6,8 @@ const getAll = async (req, res) => {
     const tables = await tableService.getAll();
     return success(res, tables);
   } catch (err) {
-    console.error('Get tables error:', err);
-    return error(res, 'Failed to get tables', 500);
+    console.error('Lỗi khi lấy danh sách bàn:', err);
+    return error(res, 'Không thể lấy danh sách bàn.', 500);
   }
 };
 
@@ -16,14 +16,14 @@ const create = async (req, res) => {
     const { name, capacity } = req.body;
 
     if (!name || !capacity) {
-      return error(res, 'Name and capacity are required', 400);
+      return error(res, 'Tên và sức chứa là bắt buộc.', 400);
     }
 
     const result = await tableService.create(name, capacity);
-    return success(res, result, 'Table created successfully', 201);
+    return success(res, result, 'Bàn được tạo thành công.', 201);
   } catch (err) {
-    console.error('Create table error:', err);
-    return error(res, 'Failed to create table', 500);
+    console.error('Lỗi khi tạo bàn:', err);
+    return error(res, 'Không thể tạo bàn.', 500);
   }
 };
 
@@ -33,14 +33,14 @@ const update = async (req, res) => {
     const { name, capacity } = req.body;
 
     if (!name || !capacity) {
-      return error(res, 'Name and capacity are required', 400);
+      return error(res, 'Tên và sức chứa là bắt buộc.', 400);
     }
 
     const result = await tableService.update(id, name, capacity);
-    return success(res, result, 'Table updated successfully');
+    return success(res, result, 'Bàn được cập nhật thành công.');
   } catch (err) {
-    console.error('Update table error:', err);
-    return error(res, 'Failed to update table', 500);
+    console.error('Lỗi khi cập nhật bàn:', err);
+    return error(res, 'Không thể cập nhật bàn.', 500);
   }
 };
 
@@ -50,14 +50,14 @@ const updateStatus = async (req, res) => {
     const { status } = req.body;
 
     if (!status) {
-      return error(res, 'Status is required', 400);
+      return error(res, 'Trạng thái là bắt buộc.', 400);
     }
 
     const result = await tableService.updateStatus(id, status);
-    return success(res, result, 'Table status updated successfully');
+    return success(res, result, 'Bàn được cập nhật trạng thái thành công');
   } catch (err) {
-    console.error('Update table status error:', err);
-    return error(res, 'Failed to update table status', 500);
+    console.error('Lỗi khi cập nhật trạng thái bàn:', err);
+    return error(res, 'Không thể cập nhật trạng thái bàn.', 500);
   }
 };
 

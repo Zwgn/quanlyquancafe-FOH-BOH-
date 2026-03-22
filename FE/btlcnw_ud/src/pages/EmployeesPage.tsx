@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { AxiosError } from "axios";
 import {
   createNewEmployee,
   deleteExistingEmployee,
@@ -19,6 +20,29 @@ interface EmployeeRow {
 }
 
 const PAGE_SIZE = 8;
+
+const getApiErrorMessage = (requestError: unknown, fallbackMessage: string) => {
+  if (!(requestError instanceof AxiosError)) {
+    return fallbackMessage;
+  }
+
+  const apiMessage = (requestError.response?.data as { message?: string } | undefined)
+    ?.message;
+
+  if (apiMessage) {
+    return apiMessage;
+  }
+
+  if (requestError.response?.status === 403) {
+    return "Bạn không có quyền truy cập mục Nhân viên. Tài khoản Admin mới được phép.";
+  }
+
+  if (requestError.response?.status === 401) {
+    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+  }
+
+  return fallbackMessage;
+};
 
 const mapEmployee = (input: unknown, index: number): EmployeeRow => {
   const row = (input ?? {}) as Record<string, unknown>;
@@ -49,8 +73,8 @@ const EmployeesPage = () => {
       setError(null);
       const response = await getEmployeesList();
       setEmployees(response.map(mapEmployee));
-    } catch {
-      setError("Khong tai duoc danh sach nhan vien.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Không tải được danh sách nhân viên."));
     } finally {
       setLoading(false);
     }
@@ -95,7 +119,7 @@ const EmployeesPage = () => {
     event.preventDefault();
 
     if (!form.name.trim() || !form.phone.trim()) {
-      setError("Ten va so dien thoai la bat buoc.");
+      setError("Tên và số điện thoại là bắt buộc.");
       return;
     }
 
@@ -107,7 +131,7 @@ const EmployeesPage = () => {
         });
       } else {
         if (!form.userId.trim()) {
-          setError("User ID la bat buoc khi tao nhan vien.");
+          setError("User ID là bắt buộc khi tạo nhân viên.");
           return;
         }
 
@@ -120,8 +144,8 @@ const EmployeesPage = () => {
 
       setOpenModal(false);
       await loadEmployees();
-    } catch {
-      setError("Khong luu duoc nhan vien.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Không lưu được nhân viên."));
     }
   };
 
@@ -129,8 +153,8 @@ const EmployeesPage = () => {
     try {
       await deleteExistingEmployee(id);
       await loadEmployees();
-    } catch {
-      setError("Xoa nhan vien that bai.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Xóa nhân viên thất bại."));
     }
   };
 

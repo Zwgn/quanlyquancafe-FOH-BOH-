@@ -6,8 +6,8 @@ const getTransactions = async (req, res) => {
     const transactions = await inventoryService.getTransactions();
     return success(res, transactions);
   } catch (err) {
-    console.error('Get inventory transactions error:', err);
-    return error(res, 'Failed to get inventory transactions', 500);
+    console.error('Lỗi khi lấy giao dịch tồn kho:', err);
+    return error(res, 'Không thể lấy giao dịch tồn kho.', 500);
   }
 };
 
@@ -16,14 +16,14 @@ const importInventory = async (req, res) => {
     const { ingredientId, quantity } = req.body;
 
     if (!ingredientId || !quantity) {
-      return error(res, 'IngredientId and quantity are required', 400);
+      return error(res, 'Vui lòng nhập ID nguyên liệu và số lượng.', 400);
     }
 
     const result = await inventoryService.importInventory(ingredientId, quantity);
-    return success(res, result, 'Inventory imported successfully', 201);
+    return success(res, result, 'Tồn kho được nhập thành công.', 201);
   } catch (err) {
-    console.error('Import inventory error:', err);
-    return error(res, 'Failed to import inventory', 500);
+    console.error('Lỗi khi nhập tồn kho:', err);
+    return error(res, 'Nhập tồn kho thất bại.', 500);
   }
 };
 
@@ -32,14 +32,14 @@ const exportInventory = async (req, res) => {
     const { ingredientId, quantity } = req.body;
 
     if (!ingredientId || !quantity) {
-      return error(res, 'IngredientId and quantity are required', 400);
+      return error(res, 'Vui lòng nhập ID nguyên liệu và số lượng.', 400);
     }
 
     const result = await inventoryService.exportInventory(ingredientId, quantity);
-    return success(res, result, 'Inventory exported successfully', 201);
+    return success(res, result, 'Tồn kho được xuất thành công.', 201);
   } catch (err) {
-    console.error('Export inventory error:', err);
-    return error(res, 'Failed to export inventory', 500);
+    console.error('Lỗi khi xuất tồn kho:', err);
+    return error(res, 'Xuất tồn kho thất bại.', 500);
   }
 };
 

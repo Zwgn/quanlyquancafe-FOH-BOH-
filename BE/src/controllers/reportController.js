@@ -6,14 +6,14 @@ const getDailyRevenue = async (req, res) => {
     const { date } = req.query;
 
     if (!date) {
-      return error(res, 'Date parameter is required', 400);
+      return error(res, 'Ngày là bắt buộc.', 400);
     }
 
     const report = await reportService.getDailyRevenue(date);
     return success(res, report);
   } catch (err) {
-    console.error('Get daily revenue error:', err);
-    return error(res, 'Failed to get daily revenue', 500);
+    console.error('Lỗi khi lấy doanh thu hàng ngày:', err);
+    return error(res, 'Không thể lấy doanh thu hàng ngày.', 500);
   }
 };
 
@@ -23,8 +23,8 @@ const getBestSellingItems = async (req, res) => {
     const items = await reportService.getBestSellingItems(parseInt(top));
     return success(res, items);
   } catch (err) {
-    console.error('Get best selling items error:', err);
-    return error(res, 'Failed to get best selling items', 500);
+    console.error('Lỗi khi lấy món bán chạy:', err);
+    return error(res, 'Không thể lấy món bán chạy.', 500);
   }
 };
 
@@ -34,8 +34,8 @@ const getLowStockIngredients = async (req, res) => {
     const ingredients = await reportService.getLowStockIngredients(parseFloat(threshold));
     return success(res, ingredients);
   } catch (err) {
-    console.error('Get low stock ingredients error:', err);
-    return error(res, 'Failed to get low stock ingredients', 500);
+    console.error('Lỗi khi lấy nguyên liệu sắp hết:', err);
+    return error(res, 'Không thể lấy nguyên liệu sắp hết.', 500);
   }
 };
 

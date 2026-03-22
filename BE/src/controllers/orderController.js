@@ -6,8 +6,8 @@ const getAll = async (req, res) => {
     const orders = await orderService.getAll();
     return success(res, orders);
   } catch (err) {
-    console.error('Get orders error:', err);
-    return error(res, 'Failed to get orders', 500);
+    console.error('Lỗi khi lấy danh sách đơn hàng:', err);
+    return error(res, 'Không thể lấy danh sách đơn hàng.', 500);
   }
 };
 
@@ -17,13 +17,13 @@ const getById = async (req, res) => {
     const order = await orderService.getById(id);
 
     if (!order) {
-      return error(res, 'Order not found', 404);
+      return error(res, 'Đơn hàng không tồn tại.', 404);
     }
 
     return success(res, order);
   } catch (err) {
-    console.error('Get order error:', err);
-    return error(res, 'Failed to get order', 500);
+    console.error('Lỗi khi lấy thông tin đơn hàng:', err);
+    return error(res, 'Không thể lấy thông tin đơn hàng.', 500);
   }
 };
 
@@ -32,14 +32,14 @@ const create = async (req, res) => {
     const { tableId, employeeId } = req.body;
 
     if (!tableId || !employeeId) {
-      return error(res, 'TableId and employeeId are required', 400);
+      return error(res, 'ID bàn và ID nhân viên là bắt buộc.', 400);
     }
 
     const result = await orderService.create(tableId, employeeId);
-    return success(res, result, 'Order created successfully', 201);
+    return success(res, result, 'Đơn hàng được tạo thành công.', 201);
   } catch (err) {
-    console.error('Create order error:', err);
-    return error(res, 'Failed to create order', 500);
+    console.error('Lỗi khi tạo đơn hàng:', err);
+    return error(res, 'Tạo đơn hàng thất bại.', 500);
   }
 };
 
@@ -49,14 +49,14 @@ const updateStatus = async (req, res) => {
     const { status } = req.body;
 
     if (!status) {
-      return error(res, 'Status is required', 400);
+      return error(res, 'Trạng thái là bắt buộc.', 400);
     }
 
     const result = await orderService.updateStatus(id, status);
-    return success(res, result, 'Order status updated successfully');
+    return success(res, result, 'Trạng thái đơn hàng được cập nhật thành công.');
   } catch (err) {
-    console.error('Update order status error:', err);
-    return error(res, 'Failed to update order status', 500);
+    console.error('Lỗi khi cập nhật trạng thái đơn hàng:', err);
+    return error(res, 'Cập nhật trạng thái đơn hàng thất bại.', 500);
   }
 };
 
@@ -64,10 +64,10 @@ const remove = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await orderService.remove(id);
-    return success(res, result, 'Order deleted successfully');
+    return success(res, result, 'Đơn hàng được xóa thành công.');
   } catch (err) {
-    console.error('Delete order error:', err);
-    return error(res, 'Failed to delete order', 500);
+    console.error('Lỗi khi xóa đơn hàng:', err);
+    return error(res, 'Xóa đơn hàng thất bại.', 500);
   }
 };
 

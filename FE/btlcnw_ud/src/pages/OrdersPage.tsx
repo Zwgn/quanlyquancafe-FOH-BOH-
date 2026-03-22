@@ -55,7 +55,7 @@ const OrdersPage = () => {
       const response = await getOrdersList();
       setOrders(response.map(mapOrderRow));
     } catch {
-      setError("Khong tai duoc danh sach don hang.");
+      setError("Không tải được danh sách đơn hàng.");
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ const OrdersPage = () => {
     event.preventDefault();
 
     if (!createForm.tableId.trim() || !createForm.employeeId.trim()) {
-      setError("Table ID va Employee ID khong duoc de trong.");
+      setError("Table ID và Employee ID không được để trống.");
       return;
     }
 
@@ -104,7 +104,7 @@ const OrdersPage = () => {
       setCreateForm({ tableId: "", employeeId: "" });
       await loadOrders();
     } catch {
-      setError("Khong tao duoc don hang.");
+      setError("Không tạo được đơn hàng.");
     }
   };
 
@@ -113,7 +113,7 @@ const OrdersPage = () => {
       await updateExistingOrderStatus(orderId, { status });
       await loadOrders();
     } catch {
-      setError("Cap nhat trang thai don hang that bai.");
+      setError("Cập nhật trạng thái đơn hàng thất bại.");
     }
   };
 
@@ -122,7 +122,7 @@ const OrdersPage = () => {
       await deleteExistingOrder(orderId);
       await loadOrders();
     } catch {
-      setError("Xoa don hang that bai.");
+      setError("Xóa đơn hàng thất bại.");
     }
   };
 
@@ -136,7 +136,7 @@ const OrdersPage = () => {
     event.preventDefault();
 
     if (!selectedOrderId || !itemForm.menuItemId.trim() || itemForm.quantity <= 0) {
-      setError("Vui long nhap day du menuItemId va quantity > 0.");
+      setError("Vui lòng nhập đầy đủ menuItemId và quantity > 0.");
       return;
     }
 
@@ -147,7 +147,7 @@ const OrdersPage = () => {
       });
       setAddItemOpen(false);
     } catch {
-      setError("Them mon vao don hang that bai.");
+      setError("Thêm món vào đơn hàng thất bại.");
     }
   };
 

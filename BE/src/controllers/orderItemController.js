@@ -7,20 +7,20 @@ const add = async (req, res) => {
     const { menuItemId, quantity } = req.body;
 
     if (!menuItemId || !quantity) {
-      return error(res, 'MenuItemId and quantity are required', 400);
+      return error(res, 'ID món ăn và số lượng là bắt buộc.', 400);
     }
 
     const result = await orderItemService.add(orderId, menuItemId, quantity);
-    return success(res, result, 'Item added to order successfully', 201);
+    return success(res, result, 'Món ăn được thêm vào đơn hàng thành công.', 201);
   } catch (err) {
-    console.error('Add order item error:', err);
+    console.error('Lỗi khi thêm món ăn vào đơn hàng:', err);
 
     // Check for insufficient ingredients error
     if (err.message && err.message.includes('Not enough ingredients')) {
-      return error(res, 'Not enough ingredients in stock', 400);
+      return error(res, 'Không đủ nguyên liệu trong kho', 400);
     }
 
-    return error(res, 'Failed to add item to order', 500);
+    return error(res, 'Thêm món ăn vào đơn hàng thất bại.', 500);
   }
 };
 
@@ -30,14 +30,14 @@ const update = async (req, res) => {
     const { quantity } = req.body;
 
     if (!quantity) {
-      return error(res, 'Quantity is required', 400);
+      return error(res, 'Số lượng là bắt buộc.', 400);
     }
 
     const result = await orderItemService.update(id, quantity);
-    return success(res, result, 'Order item updated successfully');
+    return success(res, result, 'Món ăn trong đơn hàng được cập nhật thành công.');
   } catch (err) {
-    console.error('Update order item error:', err);
-    return error(res, 'Failed to update order item', 500);
+    console.error('Lỗi khi cập nhật món ăn trong đơn hàng:', err);
+    return error(res, 'Cập nhật món ăn trong đơn hàng thất bại.', 500);
   }
 };
 
@@ -45,10 +45,10 @@ const remove = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await orderItemService.remove(id);
-    return success(res, result, 'Order item deleted successfully');
+    return success(res, result, 'Món ăn trong đơn hàng được xóa thành công.');
   } catch (err) {
-    console.error('Delete order item error:', err);
-    return error(res, 'Failed to delete order item', 500);
+    console.error('Lỗi khi xóa món ăn trong đơn hàng:', err);
+    return error(res, 'Xóa món ăn trong đơn hàng thất bại.', 500);
   }
 };
 
@@ -58,14 +58,14 @@ const updateStatus = async (req, res) => {
     const { status } = req.body;
 
     if (!status) {
-      return error(res, 'Status is required', 400);
+      return error(res, 'Trạng thái là bắt buộc.', 400);
     }
 
     const result = await orderItemService.updateStatus(id, status);
-    return success(res, result, 'Order item status updated successfully');
+    return success(res, result, 'Trạng thái món ăn trong đơn hàng được cập nhật thành công.');
   } catch (err) {
-    console.error('Update order item status error:', err);
-    return error(res, 'Failed to update order item status', 500);
+    console.error('Lỗi khi cập nhật trạng thái món ăn trong đơn hàng:', err);
+    return error(res, 'Cập nhật trạng thái món ăn trong đơn hàng thất bại.', 500);
   }
 };
 

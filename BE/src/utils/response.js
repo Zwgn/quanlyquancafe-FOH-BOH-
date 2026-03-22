@@ -1,4 +1,4 @@
-const success = (res, data = null, message = 'Success', statusCode = 200) => {
+const success = (res, data = null, message = 'Thành công', statusCode = 200) => {
   return res.status(statusCode).json({
     success: true,
     message,
@@ -6,7 +6,7 @@ const success = (res, data = null, message = 'Success', statusCode = 200) => {
   });
 };
 
-const error = (res, message = 'Error occurred', statusCode = 500, details = null) => {
+const error = (res, message = 'Đã xảy ra lỗi', statusCode = 500, details = null) => {
   return res.status(statusCode).json({
     success: false,
     message,

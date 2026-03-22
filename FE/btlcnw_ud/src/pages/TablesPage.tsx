@@ -50,7 +50,7 @@ const TablesPage = () => {
       const response = await getTablesList();
       setTables(response.map(mapTable));
     } catch {
-      setError("Khong tai duoc danh sach ban.");
+      setError("Không tải được danh sách bàn.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ const TablesPage = () => {
     event.preventDefault();
 
     if (!form.name.trim() || form.capacity <= 0) {
-      setError("Ten ban va suc chua phai hop le.");
+      setError("Tên bàn và sức chứa không hợp lệ.");
       return;
     }
 
@@ -111,7 +111,7 @@ const TablesPage = () => {
       setModalOpen(false);
       await loadTables();
     } catch {
-      setError("Luu ban that bai.");
+      setError("Lưu bàn thất bại.");
     }
   };
 
@@ -120,7 +120,7 @@ const TablesPage = () => {
       await updateExistingTableStatus(id, status);
       await loadTables();
     } catch {
-      setError("Cap nhat trang thai ban that bai.");
+      setError("Cập nhật trạng thái bàn thất bại.");
     }
   };
 

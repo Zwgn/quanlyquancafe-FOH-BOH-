@@ -57,7 +57,7 @@ const MenuPage = () => {
       const response = await getMenuItemsList();
       setMenuItems(response.map(mapMenuItem));
     } catch {
-      setError("Khong tai duoc danh sach thuc don.");
+      setError("Không tải được danh sách menu.");
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ const MenuPage = () => {
     event.preventDefault();
 
     if (!form.name.trim() || form.price <= 0) {
-      setError("Ten mon va gia tien phai hop le.");
+      setError("Tên món và giá tiền phải hợp lệ.");
       return;
     }
 
@@ -121,7 +121,7 @@ const MenuPage = () => {
         });
       } else {
         if (!form.categoryId.trim()) {
-          setError("Category ID bat buoc khi them moi.");
+          setError("Category ID là bắt buộc khi thêm mới.");
           return;
         }
 
@@ -135,7 +135,7 @@ const MenuPage = () => {
       setOpenModal(false);
       await loadMenu();
     } catch {
-      setError("Khong luu duoc mon.");
+      setError("Không lưu được món.");
     }
   };
 
@@ -144,7 +144,7 @@ const MenuPage = () => {
       await deleteExistingMenuItem(id);
       await loadMenu();
     } catch {
-      setError("Xoa mon that bai.");
+      setError("Xóa món thất bại.");
     }
   };
 

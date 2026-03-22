@@ -69,7 +69,7 @@ const DashboardPage = () => {
         const [data] = await Promise.all([getDashboardStats(), loadOrders()]);
         setStats(data);
       } catch {
-        setError("Khong the tai du lieu dashboard.");
+        setError("Không tải được dữ liệu dashboard.");
       } finally {
         setLoading(false);
       }
@@ -104,7 +104,7 @@ const DashboardPage = () => {
     event.preventDefault();
 
     if (!orderForm.tableId.trim() || !orderForm.employeeId.trim()) {
-      setError("Table ID va Employee ID la bat buoc.");
+      setError("Table ID và Employee ID là bắt buộc.");
       return;
     }
 
@@ -117,7 +117,7 @@ const DashboardPage = () => {
       setOrderForm({ tableId: "", employeeId: "" });
       await loadOrders();
     } catch {
-      setError("Khong tao duoc order moi.");
+      setError("Không tạo được order mới.");
     }
   };
 
@@ -126,7 +126,7 @@ const DashboardPage = () => {
       await deleteExistingOrder(id);
       await loadOrders();
     } catch {
-      setError("Khong xoa duoc order.");
+      setError("Không xóa được order.");
     }
   };
 
@@ -135,7 +135,7 @@ const DashboardPage = () => {
       await updateExistingOrderStatus(id, { status });
       await loadOrders();
     } catch {
-      setError("Cap nhat status that bai.");
+      setError("Không thể cập nhật trạng thái.");
     }
   };
 
@@ -185,10 +185,10 @@ const DashboardPage = () => {
       {loading ? <p>Dang tai du lieu...</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       <div className="dashboard-grid">
-        <StatCard title="Tong doanh thu" value={formatCurrency(stats.totalRevenue)} />
-        <StatCard title="Tong don hang" value={String(stats.totalOrders)} />
-        <StatCard title="Tong mon" value={String(stats.totalProducts)} />
-        <StatCard title="Nhan vien dang lam" value={String(stats.activeEmployees)} />
+        <StatCard title="Tổng doanh thu" value={formatCurrency(stats.totalRevenue)} />
+        <StatCard title="Tổng đơn hàng" value={String(stats.totalOrders)} />
+        <StatCard title="Tổng món" value={String(stats.totalProducts)} />
+        <StatCard title="Nhân viên đang làm" value={String(stats.activeEmployees)} />
       </div>
 
       <section className="module-card">

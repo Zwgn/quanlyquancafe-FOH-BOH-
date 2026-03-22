@@ -6,8 +6,8 @@ const getAll = async (req, res) => {
     const roles = await roleService.getAll();
     return success(res, roles);
   } catch (err) {
-    console.error('Get roles error:', err);
-    return error(res, 'Failed to get roles', 500);
+    console.error('Lỗi khi lấy danh sách vai trò:', err);
+    return error(res, 'Không thể lấy danh sách vai trò.', 500);
   }
 };
 
@@ -16,14 +16,14 @@ const create = async (req, res) => {
     const { name } = req.body;
 
     if (!name) {
-      return error(res, 'Name is required', 400);
+      return error(res, 'Tên vai trò là bắt buộc.', 400);
     }
 
     const result = await roleService.create(name);
-    return success(res, result, 'Role created successfully', 201);
+    return success(res, result, 'Vai trò được tạo thành công.', 201);
   } catch (err) {
-    console.error('Create role error:', err);
-    return error(res, 'Failed to create role', 500);
+    console.error('Lỗi khi tạo vai trò:', err);
+    return error(res, 'Không thể tạo vai trò.', 500);
   }
 };
 

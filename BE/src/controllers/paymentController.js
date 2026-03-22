@@ -6,8 +6,8 @@ const getAll = async (req, res) => {
     const payments = await paymentService.getAll();
     return success(res, payments);
   } catch (err) {
-    console.error('Get payments error:', err);
-    return error(res, 'Failed to get payments', 500);
+    console.error('Lỗi khi lấy danh sách thanh toán:', err);
+    return error(res, 'Không thể lấy danh sách thanh toán.', 500);
   }
 };
 
@@ -17,14 +17,14 @@ const checkout = async (req, res) => {
     const { paymentMethod } = req.body;
 
     if (!paymentMethod) {
-      return error(res, 'Payment method is required', 400);
+      return error(res, 'Phương thức thanh toán là bắt buộc.', 400);
     }
 
     const result = await paymentService.checkout(orderId, paymentMethod);
-    return success(res, result, 'Payment completed successfully', 201);
+    return success(res, result, 'Thanh toán hoàn tất thành công.', 201);
   } catch (err) {
-    console.error('Checkout error:', err);
-    return error(res, 'Failed to complete payment', 500);
+    console.error('Lỗi khi thanh toán:', err);
+    return error(res, 'Không thể hoàn tất thanh toán.', 500);
   }
 };
 

@@ -19,25 +19,47 @@ interface NavItem {
   label: string;
   icon: any;
   to: string;
+  roles?: string[];
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: MdDashboard, to: "/dashboard" },
-  { label: "Don hang", icon: MdReceiptLong, to: "/orders" },
-  { label: "Thuc don", icon: MdLocalCafe, to: "/menu" },
-  { label: "Ban", icon: MdTableRestaurant, to: "/tables" },
-  { label: "Kho nguyen lieu", icon: MdInventory, to: "/inventory" },
-  { label: "Nhan vien", icon: MdPeople, to: "/employees" },
-  { label: "Bao cao", icon: MdBarChart, to: "/reports" }
+  { label: "Đơn hàng", icon: MdReceiptLong, to: "/orders" },
+  { label: "Thực đơn", icon: MdLocalCafe, to: "/menu" },
+  { label: "Bàn", icon: MdTableRestaurant, to: "/tables" },
+  { label: "Kho nguyên liệu", icon: MdInventory, to: "/inventory", roles: ["admin"] },
+  { label: "Nhân viên", icon: MdPeople, to: "/employees", roles: ["admin"] },
+  { label: "Báo cáo", icon: MdBarChart, to: "/reports" }
 ];
+
+const getCurrentUserRole = () => {
+  const rawUser = localStorage.getItem("user");
+
+  if (!rawUser) {
+    return "";
+  }
+
+  try {
+    const parsedUser = JSON.parse(rawUser) as { role?: string };
+    return (parsedUser.role ?? "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+};
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const { username } = useAppContext();
+  const { username, setUsername } = useAppContext();
+  const role = getCurrentUserRole();
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.roles || item.roles.includes(role)
+  );
 
   const handleSignOut = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("authToken");
+    setUsername("");
     navigate("/login");
   };
 
@@ -49,7 +71,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="sidebar-nav">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           return (
             <NavLink
               key={item.to}

@@ -86,7 +86,7 @@ const ReportsPage = () => {
         })
       );
     } catch {
-      setError("Khong tai duoc bao cao.");
+      setError("Không tải được dữ liệu báo cáo.");
     } finally {
       setLoading(false);
     }

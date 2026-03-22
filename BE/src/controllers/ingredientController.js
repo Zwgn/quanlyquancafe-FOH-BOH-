@@ -6,8 +6,8 @@ const getAll = async (req, res) => {
     const ingredients = await ingredientService.getAll();
     return success(res, ingredients);
   } catch (err) {
-    console.error('Get ingredients error:', err);
-    return error(res, 'Failed to get ingredients', 500);
+    console.error('Lỗi khi lấy danh sách nguyên liệu:', err);
+    return error(res, 'Không thể lấy danh sách nguyên liệu.', 500);
   }
 };
 
@@ -16,14 +16,14 @@ const create = async (req, res) => {
     const { name, unit, stockQuantity, supplierId } = req.body;
 
     if (!name || !unit || stockQuantity === undefined || !supplierId) {
-      return error(res, 'Name, unit, stockQuantity, and supplierId are required', 400);
+      return error(res, 'Vui lòng nhập đầy đủ tên, đơn vị, số lượng tồn kho và ID nhà cung cấp.', 400);
     }
 
     const result = await ingredientService.create(name, unit, stockQuantity, supplierId);
-    return success(res, result, 'Ingredient created successfully', 201);
+    return success(res, result, 'Nguyên liệu được tạo thành công.', 201);
   } catch (err) {
-    console.error('Create ingredient error:', err);
-    return error(res, 'Failed to create ingredient', 500);
+    console.error('Lỗi khi tạo nguyên liệu:', err);
+    return error(res, 'Tạo nguyên liệu thất bại.', 500);
   }
 };
 
@@ -33,14 +33,14 @@ const update = async (req, res) => {
     const { name, unit, stockQuantity, supplierId } = req.body;
 
     if (!name || !unit || stockQuantity === undefined || !supplierId) {
-      return error(res, 'Name, unit, stockQuantity, and supplierId are required', 400);
+      return error(res, 'Vui lòng nhập đầy đủ tên, đơn vị, số lượng tồn kho và ID nhà cung cấp.', 400);
     }
 
     const result = await ingredientService.update(id, name, unit, stockQuantity, supplierId);
-    return success(res, result, 'Ingredient updated successfully');
+    return success(res, result, 'Nguyên liệu được cập nhật thành công');
   } catch (err) {
-    console.error('Update ingredient error:', err);
-    return error(res, 'Failed to update ingredient', 500);
+    console.error('Lỗi khi cập nhật nguyên liệu:', err);
+    return error(res, 'Cập nhật nguyên liệu thất bại.', 500);
   }
 };
 
@@ -48,10 +48,10 @@ const remove = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await ingredientService.remove(id);
-    return success(res, result, 'Ingredient deleted successfully');
+    return success(res, result, 'Nguyên liệu được xóa thành công');
   } catch (err) {
-    console.error('Delete ingredient error:', err);
-    return error(res, 'Failed to delete ingredient', 500);
+    console.error('Lỗi khi xóa nguyên liệu:', err);
+    return error(res, 'Xóa nguyên liệu thất bại.', 500);
   }
 };
 
