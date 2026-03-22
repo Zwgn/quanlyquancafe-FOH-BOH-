@@ -58,7 +58,7 @@ const InventoryPage = () => {
       const data = await getIngredientsList();
       setIngredients(data.map(mapIngredient));
     } catch {
-      setError("Khong tai duoc du lieu kho.");
+      setError("Không tải được dữ liệu kho.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ const InventoryPage = () => {
     event.preventDefault();
 
     if (!createForm.name.trim() || !createForm.supplierId.trim()) {
-      setError("Ten nguyen lieu va supplier ID la bat buoc.");
+      setError("Tên nguyên liệu và supplier ID là bắt buộc.");
       return;
     }
 
@@ -110,7 +110,7 @@ const InventoryPage = () => {
       setCreateForm({ name: "", unit: "kg", stockQuantity: 0, supplierId: "" });
       await loadIngredients();
     } catch {
-      setError("Them nguyen lieu that bai.");
+      setError("Thêm nguyên liệu thất bại.");
     }
   };
 
@@ -119,7 +119,7 @@ const InventoryPage = () => {
       await deleteExistingIngredient(id);
       await loadIngredients();
     } catch {
-      setError("Xoa nguyen lieu that bai.");
+      setError("Xóa nguyên liệu thất bại.");
     }
   };
 
@@ -134,7 +134,7 @@ const InventoryPage = () => {
     event.preventDefault();
 
     if (!selectedId || stockForm.quantity <= 0) {
-      setError("So luong phai lon hon 0.");
+      setError("Số lượng phải lớn hơn 0.");
       return;
     }
 
@@ -147,7 +147,7 @@ const InventoryPage = () => {
       setStockOpen(false);
       await loadIngredients();
     } catch {
-      setError("Cap nhat ton kho that bai.");
+      setError("Cập nhật tồn kho thất bại.");
     }
   };
 
