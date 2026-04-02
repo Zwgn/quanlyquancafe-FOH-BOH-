@@ -53,10 +53,9 @@ CREATE TABLE MenuItems (
     CategoryId UNIQUEIDENTIFIER,
     Price DECIMAL(12,2),
     IsAvailable BIT DEFAULT 1,
-
+	ImageUrl NVARCHAR(255),
     FOREIGN KEY (CategoryId) REFERENCES MenuCategories(Id)
 );
-
 --Table Suppliers/Nhà cung cấp
 CREATE TABLE Suppliers (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -314,6 +313,29 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		BEGIN
 			SELECT * FROM Employees
 		END
+--------Get Employees ByUserId
+		CREATE PROCEDURE sp_Employees_GetByUserId
+	   @UserId UNIQUEIDENTIFIER
+		AS
+		BEGIN
+			SELECT 
+				e.Id AS EmployeeId,
+				e.Name,
+				e.Phone,
+				e.CreatedAt,
+
+				u.Id AS UserId,
+				u.Username,
+				u.CreatedAt AS UserCreatedAt,
+
+				r.Name AS Role
+			FROM Employees e
+			INNER JOIN Users u 
+				ON e.UserId = u.Id
+			LEFT JOIN Roles r 
+				ON u.RoleId = r.Id
+			WHERE e.UserId = @UserId
+		END
 
 --------Create Employee
 		CREATE PROCEDURE sp_Employees_Create
@@ -398,10 +420,10 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 				m.Id,
 				m.Name,
 				m.Price,
+				m.ImageUrl,
 				c.Name Category
 			FROM MenuItems m
-			JOIN MenuCategories c
-			ON m.CategoryId = c.Id
+			JOIN MenuCategories c ON m.CategoryId = c.Id
 		END
 
 --------Get MenuItem By Id
@@ -416,24 +438,28 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		CREATE PROCEDURE sp_MenuItems_Create
 			@Name NVARCHAR(100),
 			@CategoryId UNIQUEIDENTIFIER,
-			@Price DECIMAL(12,2)
+			@Price DECIMAL(12,2),
+			@ImageUrl NVARCHAR(255)
 		AS
 		BEGIN
 			INSERT INTO MenuItems
-			VALUES(NEWID(),@Name,@CategoryId,@Price,1)
+			VALUES(NEWID(), @Name, @CategoryId, @Price, 1, @ImageUrl)
 		END
 
 --------Update MenuItem
 		CREATE PROCEDURE sp_MenuItems_Update
 			@Id UNIQUEIDENTIFIER,
 			@Name NVARCHAR(100),
-			@Price DECIMAL(12,2)
+			@Price DECIMAL(12,2),
+			@ImageUrl NVARCHAR(255)
 		AS
 		BEGIN
 			UPDATE MenuItems
-			SET Name=@Name,
-				Price=@Price
-			WHERE Id=@Id
+			SET 
+				Name = @Name,
+				Price = @Price,
+				ImageUrl = @ImageUrl
+			WHERE Id = @Id
 		END
 
 --------Delete MenuItem
