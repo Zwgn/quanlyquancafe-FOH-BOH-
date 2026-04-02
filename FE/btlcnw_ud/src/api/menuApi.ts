@@ -13,7 +13,7 @@ export const createMenuItem = async (payload: MenuItemPayload) => {
 
 export const updateMenuItem = async (
   id: string,
-  payload: Pick<MenuItemPayload, "name" | "price">
+  payload: Pick<MenuItemPayload, "name" | "categoryId" | "price" | "imgUrl">
 ) => {
   return axiosClient.put<ApiResponse<unknown>>(`/menu-items/${id}`, payload);
 };

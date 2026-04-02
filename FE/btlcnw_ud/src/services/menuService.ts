@@ -13,7 +13,7 @@ export const createNewMenuItem = async (payload: MenuItemPayload) =>
 
 export const updateExistingMenuItem = async (
   id: string,
-  payload: Pick<MenuItemPayload, "name" | "price">
+  payload: Pick<MenuItemPayload, "name" | "categoryId" | "price" | "imgUrl">
 ) => updateMenuItem(id, payload);
 
 export const deleteExistingMenuItem = async (id: string) => deleteMenuItem(id);

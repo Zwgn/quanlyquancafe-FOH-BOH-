@@ -3,7 +3,8 @@ import {
   deleteIngredient,
   exportInventory,
   getIngredients,
-  importInventory
+  importInventory,
+  updateIngredient
 } from "../api/ingredientsApi";
 import { IngredientPayload } from "../types/inventory";
 
@@ -11,6 +12,9 @@ export const getIngredientsList = async () => getIngredients();
 
 export const createNewIngredient = async (payload: IngredientPayload) =>
   createIngredient(payload);
+
+export const updateExistingIngredient = async (id: string, payload: IngredientPayload) =>
+  updateIngredient(id, payload);
 
 export const deleteExistingIngredient = async (id: string) => deleteIngredient(id);
 

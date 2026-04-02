@@ -11,6 +11,10 @@ export const createIngredient = async (payload: IngredientPayload) => {
   return axiosClient.post<ApiResponse<unknown>>("/ingredients", payload);
 };
 
+export const updateIngredient = async (id: string, payload: IngredientPayload) => {
+  return axiosClient.put<ApiResponse<unknown>>(`/ingredients/${id}`, payload);
+};
+
 export const deleteIngredient = async (id: string) => {
   return axiosClient.delete<ApiResponse<unknown>>(`/ingredients/${id}`);
 };

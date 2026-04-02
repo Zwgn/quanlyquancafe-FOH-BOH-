@@ -7,6 +7,11 @@ export const getOrders = async () => {
   return Array.isArray(response.data?.data) ? response.data.data : [];
 };
 
+export const getOrderById = async (orderId: string) => {
+  const response = await axiosClient.get<ApiResponse<unknown>>(`/orders/${orderId}`);
+  return response.data?.data ?? null;
+};
+
 export const createOrder = async (payload: OrderPayload) => {
   return axiosClient.post<ApiResponse<unknown>>("/orders", payload);
 };
@@ -24,4 +29,10 @@ export const deleteOrder = async (orderId: string) => {
 
 export const addOrderItem = async (orderId: string, payload: OrderItemPayload) => {
   return axiosClient.post<ApiResponse<unknown>>(`/orders/${orderId}/items`, payload);
+};
+
+export const checkoutOrder = async (orderId: string, paymentMethod: string) => {
+  return axiosClient.post<ApiResponse<unknown>>(`/orders/${orderId}/payment`, {
+    paymentMethod
+  });
 };
