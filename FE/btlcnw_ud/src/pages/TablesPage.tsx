@@ -1,256 +1,245 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  createNewTable,
-  getTablesList,
-  updateExistingTable,
-  updateExistingTableStatus
-} from "../services/tablesService";
+import React, { FormEvent } from "react";
+import { FiCheckCircle, FiClock, FiGrid, FiUsers } from "react-icons/fi";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
-import DataTable, { DataColumn } from "../components/ui/DataTable";
+import { useTablesManagement } from "../hooks/useTablesManagement";
 import { usePageTitle } from "../hooks/usePageTitle";
 import "../assets/styles/tables.css";
 
-interface TableRow {
-  id: string;
-  name: string;
-  capacity: number;
-  status: string;
-}
-
-const PAGE_SIZE = 8;
-
-const mapTable = (input: unknown, index: number): TableRow => {
-  const row = (input ?? {}) as Record<string, unknown>;
-
-  return {
-    id: String(row.id ?? row.Id ?? row.tableId ?? row.TableId ?? index),
-    name: String(row.name ?? row.Name ?? `Table ${index + 1}`),
-    capacity: Number(row.capacity ?? row.Capacity ?? 0),
-    status: String(row.status ?? row.Status ?? "Available")
-  };
-};
-
 const TablesPage = () => {
-  usePageTitle("Tables | DungCafe Admin");
+	usePageTitle("Bàn | DungCafe Quản trị");
+	const {
+		rows,
+		tableStats,
+		search,
+		setSearch,
+		statusFilter,
+		setStatusFilter,
+		setPage,
+		currentPage,
+		totalPages,
+		openModal,
+		setOpenModal,
+		editingRow,
+		form,
+		setForm,
+		loading,
+		error,
+		loadTables,
+		openCreateModal,
+		openEditModal,
+		handleSaveTable,
+		handleStatusChange,
+		statusOptions
+	} = useTablesManagement();
 
-  const [tables, setTables] = useState<TableRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTable, setEditingTable] = useState<TableRow | null>(null);
-  const [form, setForm] = useState({ name: "", capacity: 2 });
+	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		await handleSaveTable();
+	};
 
-  const loadTables = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getTablesList();
-      setTables(response.map(mapTable));
-    } catch {
-      setError("Không tải được danh sách bàn.");
-    } finally {
-      setLoading(false);
-    }
-  };
+	return (
+		<div className="module-page tables-page">
+			<div className="module-header">
+				<div>
+					<h2 className="module-title">Quản lý bàn</h2>
+					<p className="module-breadcrumb">Bảng điều khiển / Bàn</p>
+				</div>
+			</div>
 
-  useEffect(() => {
-    void loadTables();
-  }, []);
+			{error ? <p className="alert-error">{error}</p> : null}
 
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+			<section className="tables-stats-grid">
+				<article className="tables-stat-card">
+					<span className="tables-stat-icon tables-stat-icon-available">
+						{React.createElement(FiCheckCircle as any, { size: 24 })}
+					</span>
+					<div>
+						<p className="tables-stat-title">Bàn trống</p>
+						<p className="tables-stat-value">{tableStats.available}</p>
+						<p className="tables-stat-note">Sẵn sàng</p>
+					</div>
+				</article>
 
-    if (!keyword) {
-      return tables;
-    }
+				<article className="tables-stat-card">
+					<span className="tables-stat-icon tables-stat-icon-occupied">
+						{React.createElement(FiUsers as any, { size: 24 })}
+					</span>
+					<div>
+						<p className="tables-stat-title">Đang phục vụ</p>
+						<p className="tables-stat-value">{tableStats.occupied}</p>
+						<p className="tables-stat-note">Có khách</p>
+					</div>
+				</article>
 
-    return tables.filter((item) =>
-      [item.name, item.status, item.capacity].join(" ").toLowerCase().includes(keyword)
-    );
-  }, [tables, search]);
+				<article className="tables-stat-card">
+					<span className="tables-stat-icon tables-stat-icon-reserved">
+						{React.createElement(FiClock as any, { size: 24 })}
+					</span>
+					<div>
+						<p className="tables-stat-title">Đã đặt</p>
+						<p className="tables-stat-value">{tableStats.reserved}</p>
+						<p className="tables-stat-note">Chờ phục vụ</p>
+					</div>
+				</article>
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+				<article className="tables-stat-card">
+					<span className="tables-stat-icon tables-stat-icon-total">
+						{React.createElement(FiGrid as any, { size: 24 })}
+					</span>
+					<div>
+						<p className="tables-stat-title">Tổng số bàn</p>
+						<p className="tables-stat-value">{tableStats.total}</p>
+						<p className="tables-stat-note">Trong hệ thống</p>
+					</div>
+				</article>
+			</section>
 
-  const openCreate = () => {
-    setEditingTable(null);
-    setForm({ name: "", capacity: 2 });
-    setModalOpen(true);
-  };
+			<section className="module-card tables-card-shell">
+				<div className="tables-toolbar">
+					<input
+						className="module-search"
+						placeholder="Tìm kiếm bàn theo tên, trạng thái hoặc sức chứa..."
+						value={search}
+						onChange={(event) => {
+							setSearch(event.target.value);
+							setPage(1);
+						}}
+					/>
 
-  const openEdit = (table: TableRow) => {
-    setEditingTable(table);
-    setForm({ name: table.name, capacity: table.capacity });
-    setModalOpen(true);
-  };
+					<select
+						className="tables-filter"
+						value={statusFilter}
+						onChange={(event) => {
+							setStatusFilter(event.target.value);
+							setPage(1);
+						}}
+					>
+						<option value="all">Tất cả trạng thái</option>
+						{statusOptions.map((option) => (
+							<option key={option.value} value={option.value}>
+								{option.label}
+							</option>
+						))}
+					</select>
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+					<AppButton variant="ghost" onClick={() => void loadTables()} disabled={loading}>
+						{loading ? "Đang tải..." : "Làm mới"}
+					</AppButton>
 
-    if (!form.name.trim() || form.capacity <= 0) {
-      setError("Tên bàn và sức chứa không hợp lệ.");
-      return;
-    }
+					<AppButton onClick={openCreateModal}>+ Thêm bàn</AppButton>
+				</div>
 
-    try {
-      if (editingTable) {
-        await updateExistingTable(editingTable.id, {
-          name: form.name.trim(),
-          capacity: Number(form.capacity)
-        });
-      } else {
-        await createNewTable({ name: form.name.trim(), capacity: Number(form.capacity) });
-      }
-      setModalOpen(false);
-      await loadTables();
-    } catch {
-      setError("Lưu bàn thất bại.");
-    }
-  };
+				<div className="tables-table-wrap">
+					<table className="tables-table">
+						<thead>
+							<tr>
+								<th>Bàn</th>
+								<th>Sức chứa</th>
+								<th>Trạng thái</th>
+								<th>Hành động</th>
+							</tr>
+						</thead>
 
-  const handleStatusChange = async (id: string, status: string) => {
-    try {
-      await updateExistingTableStatus(id, status);
-      await loadTables();
-    } catch {
-      setError("Cập nhật trạng thái bàn thất bại.");
-    }
-  };
+						<tbody>
+							{rows.length === 0 ? (
+								<tr>
+									<td className="tables-empty" colSpan={4}>
+										{loading ? "Đang tải dữ liệu..." : "Không tìm thấy bàn phù hợp."}
+									</td>
+								</tr>
+							) : (
+								rows.map((row) => (
+									<tr key={row.id}>
+										<td className="tables-name">{row.name}</td>
+										<td>{row.capacity}</td>
+										<td>
+											<select
+												value={row.status}
+												onChange={(event) => void handleStatusChange(row.id, event.target.value)}
+											>
+												{statusOptions.map((option) => (
+													<option key={option.value} value={option.value}>
+														{option.label}
+													</option>
+												))}
+											</select>
+										</td>
+										<td>
+											<AppButton variant="secondary" onClick={() => openEditModal(row)}>
+												Sửa
+											</AppButton>
+										</td>
+									</tr>
+								))
+							)}
+						</tbody>
+					</table>
+				</div>
 
-  const columns: DataColumn<TableRow>[] = [
-    { key: "name", header: "Table", render: (row) => row.name },
-    { key: "capacity", header: "Capacity", render: (row) => String(row.capacity) },
-    {
-      key: "status",
-      header: "Status",
-      render: (row) => (
-        <select
-          value={row.status}
-          onChange={(event) => void handleStatusChange(row.id, event.target.value)}
-        >
-          <option value="Available">Available</option>
-          <option value="Occupied">Occupied</option>
-          <option value="Reserved">Reserved</option>
-          <option value="Cleaning">Cleaning</option>
-        </select>
-      )
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (row) => (
-        <div className="module-row-actions">
-          <AppButton variant="secondary" onClick={() => openEdit(row)}>
-            Edit
-          </AppButton>
-        </div>
-      )
-    }
-  ];
+				<div className="module-pagination">
+					<span>
+						Trang {currentPage}/{totalPages}
+					</span>
+					<div className="module-pagination-actions">
+						<AppButton
+							variant="secondary"
+							onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+							disabled={currentPage === 1}
+						>
+							Trước
+						</AppButton>
+						<AppButton
+							variant="secondary"
+							onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
+							disabled={currentPage === totalPages}
+						>
+							Sau
+						</AppButton>
+					</div>
+				</div>
+			</section>
 
-  return (
-    <div className="module-page tables-page">
-      <div className="module-header">
-        <div>
-          <h2 className="module-title">Tables Management</h2>
-          <p className="module-breadcrumb">Dashboard / Tables</p>
-        </div>
-        <AppButton onClick={openCreate}>Add Table</AppButton>
-      </div>
+			<AppModal
+				open={openModal}
+				title={editingRow ? "Sửa bàn" : "Thêm bàn mới"}
+				onClose={() => setOpenModal(false)}
+			>
+				<form className="form-grid" onSubmit={handleSubmit}>
+					<label className="form-field">
+						<span>Tên bàn</span>
+						<input
+							value={form.name}
+							onChange={(event) =>
+								setForm((previous) => ({ ...previous, name: event.target.value }))
+							}
+							required
+						/>
+					</label>
 
-      {error ? <p className="alert-error">{error}</p> : null}
+					<label className="form-field">
+						<span>Sức chứa</span>
+						<input
+							type="number"
+							min={1}
+							value={form.capacity}
+							onChange={(event) =>
+								setForm((previous) => ({ ...previous, capacity: Number(event.target.value) }))
+							}
+							required
+						/>
+					</label>
 
-      <section className="module-card">
-        <div className="module-toolbar">
-          <input
-            className="module-search"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Search by table name or status"
-          />
-          <AppButton variant="ghost" onClick={() => void loadTables()} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
-          </AppButton>
-        </div>
-
-        <DataTable
-          columns={columns}
-          rows={pagedRows}
-          rowKey={(row) => row.id}
-          emptyText="No table found."
-        />
-
-        <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
-          <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
-          </div>
-        </div>
-      </section>
-
-      <AppModal
-        open={modalOpen}
-        title={editingTable ? "Edit Table" : "Create Table"}
-        onClose={() => setModalOpen(false)}
-      >
-        <form className="form-grid" onSubmit={handleSubmit}>
-          <label className="form-field">
-            <span>Table Name</span>
-            <input
-              value={form.name}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, name: event.target.value }))
-              }
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>Capacity</span>
-            <input
-              type="number"
-              min={1}
-              value={form.capacity}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, capacity: Number(event.target.value) }))
-              }
-              required
-            />
-          </label>
-          <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Save</AppButton>
-            <AppButton type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-              Cancel
-            </AppButton>
-          </div>
-        </form>
-      </AppModal>
-    </div>
-  );
+					<div className="module-row-actions form-field-span">
+						<AppButton type="submit">Lưu</AppButton>
+						<AppButton type="button" variant="ghost" onClick={() => setOpenModal(false)}>
+							Hủy
+						</AppButton>
+					</div>
+				</form>
+			</AppModal>
+		</div>
+	);
 };
 
 export default TablesPage;
