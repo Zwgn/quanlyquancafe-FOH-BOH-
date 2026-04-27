@@ -1,11 +1,8 @@
 import axiosClient from "./axiosClient";
 import { ApiResponse } from "../types/api";
+import { UserPayload } from "../types/user";
 
-export interface UserPayload {
-  username: string;
-  password: string;
-  roleId: string;
-}
+export type { UserPayload };
 
 export const getUsers = async () => {
   const response = await axiosClient.get<ApiResponse<unknown[]>>("/users");
@@ -27,4 +24,10 @@ export const updateUser = async (id: string, payload: UserPayload) => {
 
 export const deleteUser = async (id: string) => {
   return axiosClient.delete<ApiResponse<unknown>>(`/users/${id}`);
+};
+
+export const resetUserPassword = async (id: string, newPassword?: string) => {
+  return axiosClient.post<ApiResponse<unknown>>(`/users/${id}/reset-password`, {
+    newPassword
+  });
 };

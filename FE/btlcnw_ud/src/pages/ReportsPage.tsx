@@ -1,195 +1,178 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  getBestSellingItems,
-  getDailyRevenue,
-  getLowStockIngredients
-} from "../services/reportsService";
+import React from "react";
+import { MdPrint } from "react-icons/md";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
 import DataTable, { DataColumn } from "../components/ui/DataTable";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { formatCurrency } from "../utils/formatCurrency";
+import { escapeHtmlText, openPrintWindow } from "../utils/printDocument";
+import useReports, { LowStockRow } from "../hooks/useReports";
 import "../assets/styles/reports.css";
 
-interface BestSellerRow {
-  id: string;
-  name: string;
-  soldQty: number;
-}
-
-interface LowStockRow {
-  id: string;
-  ingredient: string;
-  unit: string;
-  stock: number;
-}
-
-const PAGE_SIZE = 8;
-
-const today = new Date().toISOString().slice(0, 10);
-
 const ReportsPage = () => {
-  usePageTitle("Reports | DungCafe Admin");
+  usePageTitle("Báo cáo | Coffee Management System");
 
-  const [dailyRevenue, setDailyRevenue] = useState(0);
-  const [bestSelling, setBestSelling] = useState<BestSellerRow[]>([]);
-  const [lowStock, setLowStock] = useState<LowStockRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [openFilter, setOpenFilter] = useState(false);
-  const [filters, setFilters] = useState({ date: today, top: 10, threshold: 100 });
-  const [loading, setLoading] = useState(false);
-
-  const loadReports = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [daily, best, low] = await Promise.all([
-        getDailyRevenue(filters.date),
-        getBestSellingItems(filters.top),
-        getLowStockIngredients(filters.threshold)
-      ]);
-
-      const dailyRecord = (daily ?? {}) as Record<string, unknown>;
-      setDailyRevenue(
-        Number(
-          dailyRecord.totalRevenue ??
-            dailyRecord.TotalRevenue ??
-            dailyRecord.revenue ??
-            dailyRecord.Revenue ??
-            0
-        )
-      );
-
-      setBestSelling(
-        best.map((item, index) => {
-          const row = item as Record<string, unknown>;
-          return {
-            id: String(row.id ?? row.Id ?? row.menuItemId ?? row.MenuItemId ?? index),
-            name: String(row.name ?? row.Name ?? "Unknown"),
-            soldQty: Number(row.soldQty ?? row.SoldQty ?? row.quantity ?? row.Quantity ?? 0)
-          };
-        })
-      );
-
-      setLowStock(
-        low.map((item, index) => {
-          const row = item as Record<string, unknown>;
-          return {
-            id: String(row.id ?? row.Id ?? row.ingredientId ?? row.IngredientId ?? index),
-            ingredient: String(row.name ?? row.Name ?? row.ingredientName ?? row.IngredientName ?? ""),
-            unit: String(row.unit ?? row.Unit ?? ""),
-            stock: Number(row.stockQuantity ?? row.StockQuantity ?? row.quantity ?? row.Quantity ?? 0)
-          };
-        })
-      );
-    } catch {
-      setError("Không tải được dữ liệu báo cáo.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadReports();
-  }, [filters.date, filters.threshold, filters.top]);
-
-  const filteredLowStock = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return lowStock;
-    }
-
-    return lowStock.filter((item) =>
-      [item.ingredient, item.unit, item.stock].join(" ").toLowerCase().includes(keyword)
-    );
-  }, [lowStock, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredLowStock.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filteredLowStock.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  const {
+    dailyRevenue,
+    bestSelling,
+    lowStock,
+    lowStockPaged: pagedRows,
+    filters, setFilters,
+    search, setSearch,
+    page, setPage, currentPage, totalPages,
+    error, loading,
+    openFilter, setOpenFilter,
+    handleApplyFilter
+  } = useReports();
 
   const lowStockColumns: DataColumn<LowStockRow>[] = [
-    { key: "ingredient", header: "Ingredient", render: (row) => row.ingredient },
-    { key: "unit", header: "Unit", render: (row) => row.unit },
-    { key: "stock", header: "Current Stock", render: (row) => String(row.stock) },
+    { key: "ingredient", header: "Nguyên liệu", render: (row) => row.ingredient },
+    { key: "unit", header: "Đơn vị", render: (row) => row.unit },
+    { key: "stock", header: "Tồn hiện tại", render: (row) => String(row.stock) },
     {
       key: "status",
-      header: "Status",
+      header: "Trạng thái",
       render: (row) =>
         row.stock <= filters.threshold ? (
-          <span className="reports-status-low">Low</span>
+          <span className="reports-status-low">Thấp</span>
         ) : (
-          <span className="reports-status-ok">OK</span>
+          <span className="reports-status-ok">Ổn định</span>
         )
     }
   ];
 
-  const handleApplyFilter = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setOpenFilter(false);
+  const handlePrintReport = () => {
+    const bestRows = bestSelling
+      .map(
+        (item, index) => `
+        <tr>
+          <td class="num">${index + 1}</td>
+          <td>${escapeHtmlText(item.name)}</td>
+          <td class="num">${item.soldQty}</td>
+        </tr>`
+      )
+      .join("");
+    const lowRows = lowStock
+      .map(
+        (row) => `
+        <tr>
+          <td>${escapeHtmlText(row.ingredient)}</td>
+          <td>${escapeHtmlText(row.unit)}</td>
+          <td class="num">${row.stock}</td>
+          <td>${row.stock <= filters.threshold ? "⚠️ Thấp" : "Ổn định"}</td>
+        </tr>`
+      )
+      .join("");
+
+    const html = `
+      <div class="doc-header">
+        <div class="doc-brand">DungCafe</div>
+        <div class="doc-brand-tagline">Hệ thống quản lý quán cà phê</div>
+        <div class="doc-title">Báo cáo kinh doanh</div>
+        <p style="margin:6px 0 0;font-size:12px;color:#6c757d;">
+          Ngày in: ${new Date().toLocaleString("vi-VN")} · Kỳ báo cáo: ${escapeHtmlText(filters.date)}
+        </p>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><p>Doanh thu trong ngày</p><h3>${formatCurrency(dailyRevenue)}</h3></div>
+        <div class="kpi-card"><p>Top món bán chạy</p><h3>${bestSelling.length} món</h3></div>
+        <div class="kpi-card"><p>NL tồn thấp</p><h3>${lowStock.length} mặt</h3></div>
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title">Món bán chạy (Top ${filters.top})</div>
+        <table>
+          <thead>
+            <tr>
+              <th class="num" style="width:60px;">#</th>
+              <th>Tên món</th>
+              <th class="num">Số lượng bán</th>
+            </tr>
+          </thead>
+          <tbody>${bestRows || `<tr><td colspan="3" style="text-align:center;color:#888;">Không có dữ liệu</td></tr>`}</tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title">Nguyên liệu sắp hết (ngưỡng ≤ ${filters.threshold})</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nguyên liệu</th>
+              <th>Đơn vị</th>
+              <th class="num">Tồn hiện tại</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>${lowRows || `<tr><td colspan="4" style="text-align:center;color:#888;">Không có nguyên liệu tồn thấp</td></tr>`}</tbody>
+        </table>
+      </div>
+
+      <div class="doc-footer">
+        Báo cáo được xuất tự động từ hệ thống DungCafe.
+      </div>
+    `;
+    openPrintWindow(html, `BaoCao-${filters.date}`);
   };
 
   return (
     <div className="module-page reports-page">
       <div className="module-header">
         <div>
-          <h2 className="module-title">Reports Center</h2>
-          <p className="module-breadcrumb">Dashboard / Reports</p>
+          <h2 className="module-title">Trung tâm báo cáo</h2>
+          <p className="module-breadcrumb">Bảng điều khiển / Báo cáo</p>
         </div>
-        <AppButton onClick={() => setOpenFilter(true)}>Filters</AppButton>
+        <div className="module-row-actions">
+          <AppButton variant="secondary" onClick={handlePrintReport}>
+            {React.createElement(MdPrint as any, { size: 18, style: { marginRight: 6, verticalAlign: "middle" } })}
+            In báo cáo
+          </AppButton>
+          <AppButton onClick={() => setOpenFilter(true)}>Bộ lọc</AppButton>
+        </div>
       </div>
 
       {error ? <p className="alert-error">{error}</p> : null}
 
       <section className="reports-kpi-grid">
         <article className="module-card reports-kpi-card">
-          <p>Daily Revenue</p>
+          <p>Doanh thu theo ngày</p>
           <h3>{formatCurrency(dailyRevenue)}</h3>
-          <small>Date: {filters.date}</small>
+          <small>Ngày: {filters.date}</small>
         </article>
         <article className="module-card reports-kpi-card">
-          <p>Top Selling Count</p>
+          <p>Số món bán chạy</p>
           <h3>{bestSelling.length}</h3>
           <small>Top = {filters.top}</small>
         </article>
         <article className="module-card reports-kpi-card">
-          <p>Low Stock Items</p>
+          <p>Mặt hàng sắp hết</p>
           <h3>{lowStock.length}</h3>
-          <small>Threshold = {filters.threshold}</small>
+          <small>Ngưỡng = {filters.threshold}</small>
         </article>
       </section>
 
       <section className="module-card">
-        <h3 className="panel-title">Best Selling Items</h3>
+        <h3 className="panel-title">Món bán chạy</h3>
         <div className="reports-best-grid">
           {bestSelling.map((item) => (
             <article key={item.id} className="reports-best-item">
               <p>{item.name}</p>
-              <span>{item.soldQty} sold</span>
+              <span>Đã bán: {item.soldQty}</span>
             </article>
           ))}
-          {bestSelling.length === 0 ? <p>No data.</p> : null}
+          {bestSelling.length === 0 ? <p>Không có dữ liệu.</p> : null}
         </div>
       </section>
 
       <section className="module-card">
         <div className="module-toolbar">
-          <h3 className="panel-title">Low Stock Ingredients</h3>
+          <h3 className="panel-title">Nguyên liệu sắp hết</h3>
           <input
             className="module-search"
-            placeholder="Search ingredient"
+            placeholder="Tìm kiếm nguyên liệu"
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
@@ -197,36 +180,22 @@ const ReportsPage = () => {
           columns={lowStockColumns}
           rows={pagedRows}
           rowKey={(row) => row.id}
-          emptyText={loading ? "Loading..." : "No low-stock data."}
+          emptyText={loading ? "Đang tải..." : "Không có dữ liệu tồn kho thấp."}
         />
 
         <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
+          <span>Trang {currentPage}/{totalPages}</span>
           <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Trước</AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Sau</AppButton>
           </div>
         </div>
       </section>
 
-      <AppModal open={openFilter} title="Report Filters" onClose={() => setOpenFilter(false)}>
+      <AppModal open={openFilter} title="Bộ lọc báo cáo" onClose={() => setOpenFilter(false)}>
         <form className="form-grid" onSubmit={handleApplyFilter}>
           <label className="form-field">
-            <span>Date</span>
+            <span>Ngày</span>
             <input
               type="date"
               value={filters.date}
@@ -237,7 +206,7 @@ const ReportsPage = () => {
             />
           </label>
           <label className="form-field">
-            <span>Top Best Sellers</span>
+            <span>Top món bán chạy</span>
             <input
               type="number"
               min={1}
@@ -249,7 +218,7 @@ const ReportsPage = () => {
             />
           </label>
           <label className="form-field form-field-span">
-            <span>Low Stock Threshold</span>
+            <span>Ngưỡng tồn kho thấp</span>
             <input
               type="number"
               min={1}
@@ -264,9 +233,9 @@ const ReportsPage = () => {
             />
           </label>
           <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Apply</AppButton>
+            <AppButton type="submit">Áp dụng</AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setOpenFilter(false)}>
-              Cancel
+              Hủy
             </AppButton>
           </div>
         </form>

@@ -13,7 +13,7 @@ const importInventory = async (ingredientId, quantity) => {
     .input('IngredientId', sql.UniqueIdentifier, ingredientId)
     .input('Quantity', sql.Decimal(10, 2), quantity)
     .execute('sp_Inventory_Import');
-  return { message: 'Inventory imported successfully' };
+  return { message: 'Nhập kho thành công' };
 };
 
 const exportInventory = async (ingredientId, quantity) => {
@@ -22,7 +22,7 @@ const exportInventory = async (ingredientId, quantity) => {
     .input('IngredientId', sql.UniqueIdentifier, ingredientId)
     .input('Quantity', sql.Decimal(10, 2), quantity)
     .execute('sp_Inventory_Export');
-  return { message: 'Inventory exported successfully' };
+  return { message: 'Xuất kho thành công' };
 };
 
 module.exports = {

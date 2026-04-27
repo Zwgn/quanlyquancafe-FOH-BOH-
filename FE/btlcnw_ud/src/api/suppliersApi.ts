@@ -1,11 +1,8 @@
 import axiosClient from "./axiosClient";
 import { ApiResponse } from "../types/api";
+import { SupplierPayload } from "../types/supplier";
 
-export interface SupplierPayload {
-  name: string;
-  phone: string;
-  address: string;
-}
+export type { SupplierPayload };
 
 export const getSuppliers = async () => {
   const response = await axiosClient.get<ApiResponse<unknown[]>>("/suppliers");

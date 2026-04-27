@@ -12,6 +12,11 @@ export const getOrderById = async (orderId: string) => {
   return response.data?.data ?? null;
 };
 
+export const getOrderDetailById = async (orderId: string) => {
+  const response = await axiosClient.get<ApiResponse<unknown>>(`/orders/${orderId}/detail`);
+  return response.data?.data ?? null;
+};
+
 export const createOrder = async (payload: OrderPayload) => {
   return axiosClient.post<ApiResponse<unknown>>("/orders", payload);
 };

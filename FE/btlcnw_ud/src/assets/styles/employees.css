@@ -1,1 +1,6 @@
 @import "./module-page.css";
+
+.employees-page .inline-status {
+  background: #dbeafe;
+  color: #1e40af;
+}

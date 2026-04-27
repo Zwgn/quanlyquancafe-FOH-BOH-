@@ -12,7 +12,7 @@ const create = async (name) => {
   await pool.request()
     .input('Name', sql.NVarChar(100), name)
     .execute('sp_MenuCategories_Create');
-  return { message: 'Menu category created successfully' };
+  return { message: 'Tạo danh mục menu thành công' };
 };
 
 const update = async (id, name) => {
@@ -21,7 +21,7 @@ const update = async (id, name) => {
     .input('Id', sql.UniqueIdentifier, id)
     .input('Name', sql.NVarChar(100), name)
     .execute('sp_MenuCategories_Update');
-  return { message: 'Menu category updated successfully' };
+  return { message: 'Cập nhật danh mục menu thành công' };
 };
 
 const remove = async (id) => {
@@ -29,7 +29,7 @@ const remove = async (id) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .execute('sp_MenuCategories_Delete');
-  return { message: 'Menu category deleted successfully' };
+  return { message: 'Xóa danh mục menu thành công' };
 };
 
 module.exports = {

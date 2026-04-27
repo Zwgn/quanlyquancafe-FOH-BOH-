@@ -27,6 +27,22 @@ const getById = async (req, res) => {
   }
 };
 
+const getDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const detail = await orderService.getDetail(id);
+
+    if (!detail) {
+      return error(res, 'Đơn hàng không tồn tại.', 404);
+    }
+
+    return success(res, detail);
+  } catch (err) {
+    console.error('Lỗi khi lấy chi tiết đơn hàng:', err);
+    return error(res, 'Không thể lấy chi tiết đơn hàng.', 500);
+  }
+};
+
 const create = async (req, res) => {
   try {
     const { tableId, employeeId } = req.body;
@@ -52,6 +68,10 @@ const updateStatus = async (req, res) => {
       return error(res, 'Trạng thái là bắt buộc.', 400);
     }
 
+    if (await orderService.isOrderPaid(id)) {
+      return error(res, 'Đơn hàng đã thanh toán không thể thay đổi trạng thái.', 400);
+    }
+
     const result = await orderService.updateStatus(id, status);
     return success(res, result, 'Trạng thái đơn hàng được cập nhật thành công.');
   } catch (err) {
@@ -63,6 +83,11 @@ const updateStatus = async (req, res) => {
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (await orderService.isOrderPaid(id)) {
+      return error(res, 'Đơn hàng đã thanh toán không thể xóa.', 400);
+    }
+
     const result = await orderService.remove(id);
     return success(res, result, 'Đơn hàng được xóa thành công.');
   } catch (err) {
@@ -74,6 +99,7 @@ const remove = async (req, res) => {
 module.exports = {
   getAll,
   getById,
+  getDetail,
   create,
   updateStatus,
   remove

@@ -1,4 +1,5 @@
 const authRoutes = require('./authRoutes');
+const uploadRoutes = require('./uploadRoutes');
 const roleRoutes = require('./roleRoutes');
 const userRoutes = require('./userRoutes');
 const employeeRoutes = require('./employeeRoutes');
@@ -18,6 +19,9 @@ const reportRoutes = require('./reportRoutes');
 const setupRoutes = (app) => {
   // Auth
   app.use('/api/auth', authRoutes);
+
+  // Upload
+  app.use('/api/upload', uploadRoutes);
 
   // Roles
   app.use('/api/roles', roleRoutes);

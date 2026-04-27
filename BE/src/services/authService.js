@@ -10,7 +10,7 @@ const login = async (username, password) => {
   return result.recordset[0] || null;
 };
 
-const getDisplayNameByUserId = async (userId) => {
+const getEmployeeByUserId = async (userId) => {
   if (!userId) {
     return null;
   }
@@ -19,20 +19,16 @@ const getDisplayNameByUserId = async (userId) => {
     const pool = await getPool();
     const result = await pool.request()
       .input('UserId', sql.UniqueIdentifier, userId)
-      .query(`
-        SELECT TOP 1 Name
-        FROM Employees
-        WHERE UserId = @UserId
-      `);
+      .execute('sp_Employees_GetByUserId');
 
-    return result.recordset?.[0]?.Name || null;
+    return result.recordset?.[0] || null;
   } catch (err) {
-    console.error('Không thể lấy tên hiển thị theo UserId:', err);
+    console.error('Không thể lấy employee theo UserId:', err);
     return null;
   }
 };
 
 module.exports = {
   login,
-  getDisplayNameByUserId
+  getEmployeeByUserId
 };

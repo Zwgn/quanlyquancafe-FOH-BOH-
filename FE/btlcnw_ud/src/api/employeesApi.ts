@@ -13,7 +13,7 @@ export const createEmployee = async (payload: EmployeePayload) => {
 
 export const updateEmployee = async (
   id: string,
-  payload: Pick<EmployeePayload, "name" | "phone">
+  payload: Omit<EmployeePayload, "userId">
 ) => {
   return axiosClient.put<ApiResponse<unknown>>(`/employees/${id}`, payload);
 };

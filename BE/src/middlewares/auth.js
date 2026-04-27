@@ -2,29 +2,29 @@ const { verifyToken } = require('../utils/jwt');
 const { error } = require('../utils/response');
 
 /**
- * Middleware to verify JWT token
- * Extracts token from Authorization header: Bearer <token>
+ * Middleware xác thực JWT token
+ * Lấy token từ Authorization header: Bearer <token>
  */
 const authMiddleware = (req, res, next) => {
   try {
-    // Get token from header
+    // Lấy token từ header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return error(res, 'Từ chối truy cập. Không có token..', 401);
+      return error(res, 'Từ chối truy cập. Không có token.', 401);
     }
 
-    // Extract token
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // Tách token
+    const token = authHeader.substring(7); // Bỏ tiền tố 'Bearer '
 
-    // Verify token
+    // Xác thực token
     const decoded = verifyToken(token);
 
     if (!decoded) {
       return error(res, 'Token không hợp lệ hoặc đã hết hạn.', 401);
     }
 
-    // Attach user info to request
+    // Gắn thông tin người dùng vào request
     req.user = decoded;
     next();
   } catch (err) {
@@ -34,7 +34,7 @@ const authMiddleware = (req, res, next) => {
 };
 
 /**
- * Middleware to check if user has specific role
+ * Middleware kiểm tra vai trò người dùng
  */
 const requireRole = (...roles) => {
   return (req, res, next) => {
@@ -51,9 +51,9 @@ const requireRole = (...roles) => {
 };
 
 /**
- * Middleware to check if user is admin
+ * Middleware kiểm tra quyền quản trị viên
  */
-const requireAdmin = requireRole('Admin');
+const requireAdmin = requireRole('Admin', 'Quản lý');
 
 module.exports = {
   authMiddleware,

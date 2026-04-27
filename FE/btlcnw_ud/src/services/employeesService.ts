@@ -13,7 +13,7 @@ export const createNewEmployee = async (payload: EmployeePayload) =>
 
 export const updateExistingEmployee = async (
   id: string,
-  payload: Pick<EmployeePayload, "name" | "phone">
+  payload: Omit<EmployeePayload, "userId">
 ) => updateEmployee(id, payload);
 
 export const deleteExistingEmployee = async (id: string) => deleteEmployee(id);

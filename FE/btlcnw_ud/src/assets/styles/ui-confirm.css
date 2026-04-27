@@ -1,0 +1,82 @@
+.ui-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1100;
+  animation: confirmFadeIn 0.18s ease;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirmPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ui-confirm {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid var(--color-border-strong, #e0d6c8);
+  box-shadow: 0 24px 60px rgba(60, 30, 10, 0.22);
+  padding: 28px 28px 22px;
+  text-align: center;
+  animation: confirmPop 0.22s ease;
+}
+
+.ui-confirm-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-confirm-danger .ui-confirm-icon {
+  background: #fff1f0;
+  color: #d92d20;
+}
+
+.ui-confirm-warning .ui-confirm-icon {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+.ui-confirm-info .ui-confirm-icon {
+  background: #eef4ff;
+  color: #2563eb;
+}
+
+.ui-confirm-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-dark, #2d1810);
+}
+
+.ui-confirm-message {
+  margin: 0 0 22px;
+  color: var(--color-text-muted, #6b7280);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ui-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ui-confirm-actions .ui-button {
+  min-width: 110px;
+}

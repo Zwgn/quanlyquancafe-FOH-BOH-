@@ -1,4 +1,5 @@
 const orderItemService = require('../services/orderItemService');
+const orderService = require('../services/orderService');
 const { success, error } = require('../utils/response');
 
 const add = async (req, res) => {
@@ -10,14 +11,18 @@ const add = async (req, res) => {
       return error(res, 'ID món ăn và số lượng là bắt buộc.', 400);
     }
 
+    if (await orderService.isOrderPaid(orderId)) {
+      return error(res, 'Đơn hàng đã thanh toán không thể thêm món.', 400);
+    }
+
     const result = await orderItemService.add(orderId, menuItemId, quantity);
     return success(res, result, 'Món ăn được thêm vào đơn hàng thành công.', 201);
   } catch (err) {
     console.error('Lỗi khi thêm món ăn vào đơn hàng:', err);
 
-    // Check for insufficient ingredients error
-    if (err.message && err.message.includes('Not enough ingredients')) {
-      return error(res, 'Không đủ nguyên liệu trong kho', 400);
+    // Kiểm tra lỗi thiếu nguyên liệu từ stored procedure
+    if (err.message && err.message.includes('Không đủ nguyên liệu trong kho')) {
+      return error(res, 'Không đủ nguyên liệu trong kho.', 400);
     }
 
     return error(res, 'Thêm món ăn vào đơn hàng thất bại.', 500);

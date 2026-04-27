@@ -1,182 +1,70 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AxiosError } from "axios";
-import {
-  createNewEmployee,
-  deleteExistingEmployee,
-  getEmployeesList,
-  updateExistingEmployee
-} from "../services/employeesService";
+import { formatCurrency } from "../utils/formatCurrency";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
 import DataTable, { DataColumn } from "../components/ui/DataTable";
 import { usePageTitle } from "../hooks/usePageTitle";
+import useEmployees, { EmployeeRow } from "../hooks/useEmployees";
 import "../assets/styles/employees.css";
 
-interface EmployeeRow {
-  id: string;
-  userId: string;
-  name: string;
-  phone: string;
-}
-
-const PAGE_SIZE = 8;
-
-const getApiErrorMessage = (requestError: unknown, fallbackMessage: string) => {
-  if (!(requestError instanceof AxiosError)) {
-    return fallbackMessage;
-  }
-
-  const apiMessage = (requestError.response?.data as { message?: string } | undefined)
-    ?.message;
-
-  if (apiMessage) {
-    return apiMessage;
-  }
-
-  if (requestError.response?.status === 403) {
-    return "Bạn không có quyền truy cập mục Nhân viên. Tài khoản Admin mới được phép.";
-  }
-
-  if (requestError.response?.status === 401) {
-    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
-  }
-
-  return fallbackMessage;
-};
-
-const mapEmployee = (input: unknown, index: number): EmployeeRow => {
-  const row = (input ?? {}) as Record<string, unknown>;
-
-  return {
-    id: String(row.id ?? row.Id ?? row.employeeId ?? row.EmployeeId ?? index),
-    userId: String(row.userId ?? row.UserId ?? "-"),
-    name: String(row.name ?? row.Name ?? ""),
-    phone: String(row.phone ?? row.Phone ?? "")
-  };
-};
-
 const EmployeesPage = () => {
-  usePageTitle("Employees | DungCafe Admin");
+  usePageTitle("Nhân viên | Coffee Management System");
 
-  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<EmployeeRow | null>(null);
-  const [form, setForm] = useState({ userId: "", name: "", phone: "" });
-
-  const loadEmployees = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getEmployeesList();
-      setEmployees(response.map(mapEmployee));
-    } catch (requestError) {
-      setError(getApiErrorMessage(requestError, "Không tải được danh sách nhân viên."));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadEmployees();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return employees;
-    }
-
-    return employees.filter((item) =>
-      [item.name, item.phone, item.userId].join(" ").toLowerCase().includes(keyword)
-    );
-  }, [employees, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const openCreateModal = () => {
-    setEditingEmployee(null);
-    setForm({ userId: "", name: "", phone: "" });
-    setOpenModal(true);
-  };
-
-  const openEditModal = (employee: EmployeeRow) => {
-    setEditingEmployee(employee);
-    setForm({ userId: employee.userId, name: employee.name, phone: employee.phone });
-    setOpenModal(true);
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!form.name.trim() || !form.phone.trim()) {
-      setError("Tên và số điện thoại là bắt buộc.");
-      return;
-    }
-
-    try {
-      if (editingEmployee) {
-        await updateExistingEmployee(editingEmployee.id, {
-          name: form.name.trim(),
-          phone: form.phone.trim()
-        });
-      } else {
-        if (!form.userId.trim()) {
-          setError("User ID là bắt buộc khi tạo nhân viên.");
-          return;
-        }
-
-        await createNewEmployee({
-          userId: form.userId.trim(),
-          name: form.name.trim(),
-          phone: form.phone.trim()
-        });
-      }
-
-      setOpenModal(false);
-      await loadEmployees();
-    } catch (requestError) {
-      setError(getApiErrorMessage(requestError, "Không lưu được nhân viên."));
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteExistingEmployee(id);
-      await loadEmployees();
-    } catch (requestError) {
-      setError(getApiErrorMessage(requestError, "Xóa nhân viên thất bại."));
-    }
-  };
+  const {
+    employees: pagedRows,
+    availableUsers,
+    search, setSearch,
+    page, setPage,
+    currentPage, totalPages,
+    error, success, loading,
+    openModal, setOpenModal,
+    editingEmployee,
+    form, setForm,
+    loadEmployees,
+    openCreateModal, openEditModal,
+    handleSubmit, handleDelete
+  } = useEmployees();
 
   const columns: DataColumn<EmployeeRow>[] = [
-    { key: "name", header: "Name", render: (row) => row.name },
-    { key: "phone", header: "Phone", render: (row) => row.phone },
-    { key: "user", header: "User ID", render: (row) => row.userId },
+    { key: "name", header: "Họ tên", render: (row) => row.name },
     {
-      key: "status",
-      header: "Status",
-      render: () => <span className="inline-status">Active</span>
+      key: "gender",
+      header: "Giới tính",
+      render: (row) => row.gender || "-"
     },
     {
+      key: "birthDate",
+      header: "Ngày sinh",
+      render: (row) => {
+        if (!row.birthDate) return "-";
+        const d = new Date(row.birthDate);
+        if (isNaN(d.getTime())) return "-";
+        return d.toLocaleDateString("vi-VN");
+      }
+    },
+    {
+      key: "role",
+      header: "Chức vụ",
+      render: (row) => row.role ? (
+        <span className="inline-status">{row.role}</span>
+      ) : "-"
+    },
+    {
+      key: "salary",
+      header: "Lương",
+      render: (row) => row.salary ? formatCurrency(row.salary) : "-"
+    },
+    { key: "phone", header: "Số điện thoại", render: (row) => row.phone || "-" },
+    { key: "address", header: "Địa chỉ", render: (row) => row.address || "-" },
+    {
       key: "actions",
-      header: "Actions",
+      header: "Thao tác",
       render: (row) => (
         <div className="module-row-actions">
           <AppButton variant="secondary" onClick={() => openEditModal(row)}>
-            Edit
+            Sửa
           </AppButton>
           <AppButton variant="danger" onClick={() => void handleDelete(row.id)}>
-            Delete
+            Xóa
           </AppButton>
         </div>
       )
@@ -187,13 +75,14 @@ const EmployeesPage = () => {
     <div className="module-page employees-page">
       <div className="module-header">
         <div>
-          <h2 className="module-title">Employees Management</h2>
-          <p className="module-breadcrumb">Dashboard / Employees</p>
+          <h2 className="module-title">Quản lý nhân viên</h2>
+          <p className="module-breadcrumb">Bảng điều khiển / Nhân viên</p>
         </div>
-        <AppButton onClick={openCreateModal}>Add Employee</AppButton>
+        <AppButton onClick={openCreateModal}>Thêm nhân viên</AppButton>
       </div>
 
       {error ? <p className="alert-error">{error}</p> : null}
+      {success ? <p className="alert-success">{success}</p> : null}
 
       <section className="module-card">
         <div className="module-toolbar">
@@ -204,85 +93,140 @@ const EmployeesPage = () => {
               setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Search by name, phone, userId"
+            placeholder="Tìm theo tên, số điện thoại, mã người dùng"
           />
           <AppButton variant="ghost" onClick={() => void loadEmployees()} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
-          </AppButton>
+              {loading ? "Đang tải..." : "Làm mới"}
+            </AppButton>
         </div>
 
         <DataTable
           columns={columns}
           rows={pagedRows}
           rowKey={(row) => row.id}
-          emptyText="No employee found."
+          emptyText="Không tìm thấy nhân viên."
         />
 
         <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
+          <span>Trang {currentPage}/{totalPages}</span>
           <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Trước</AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Sau</AppButton>
           </div>
         </div>
       </section>
 
       <AppModal
         open={openModal}
-        title={editingEmployee ? "Edit Employee" : "Create Employee"}
+        title={editingEmployee ? "Sửa nhân viên" : "Tạo nhân viên"}
         onClose={() => setOpenModal(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
           {!editingEmployee ? (
             <label className="form-field form-field-span">
-              <span>User ID</span>
-              <input
+              <span>Tài khoản liên kết <small style={{ color: "#6c757d" }}>(có thể bỏ trống, gán sau)</small></span>
+              <select
                 value={form.userId}
                 onChange={(event) =>
                   setForm((previous) => ({ ...previous, userId: event.target.value }))
                 }
-                required
-              />
+              >
+                <option value="">-- Chưa gán tài khoản --</option>
+                {availableUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.username} ({u.role})
+                  </option>
+                ))}
+              </select>
             </label>
           ) : null}
           <label className="form-field">
-            <span>Name</span>
+            <span>Họ và tên</span>
             <input
               value={form.name}
               onChange={(event) =>
                 setForm((previous) => ({ ...previous, name: event.target.value }))
               }
+              placeholder="Nhập họ và tên nhân viên..."
               required
             />
           </label>
           <label className="form-field">
-            <span>Phone</span>
+            <span>Số điện thoại</span>
             <input
+              type="tel"
               value={form.phone}
               onChange={(event) =>
                 setForm((previous) => ({ ...previous, phone: event.target.value }))
               }
+              placeholder="VD: 0123456789"
               required
             />
           </label>
+          <label className="form-field">
+            <span>Giới tính</span>
+            <select
+              value={form.gender}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, gender: event.target.value }))
+              }
+            >
+              <option value="">-- Chọn giới tính --</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </label>
+          <label className="form-field">
+            <span>Ngày sinh</span>
+            <input
+              type="date"
+              value={form.birthDate}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, birthDate: event.target.value }))
+              }
+            />
+          </label>
+          <label className="form-field">
+            <span>Chức vụ</span>
+            <select
+              value={form.role}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, role: event.target.value }))
+              }
+            >
+              <option value="">-- Chọn chức vụ --</option>
+              <option value="Quản lý">Quản lý</option>
+              <option value="Thu ngân">Thu ngân</option>
+              <option value="Pha chế">Pha chế</option>
+              <option value="Phục vụ">Phục vụ</option>
+            </select>
+          </label>
+          <label className="form-field">
+            <span>Lương (VNĐ)</span>
+            <input
+              type="number"
+              min={0}
+              value={form.salary}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, salary: event.target.value }))
+              }
+              placeholder="VD: 8000000"
+            />
+          </label>
+          <label className="form-field form-field-span">
+            <span>Địa chỉ</span>
+            <input
+              value={form.address}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, address: event.target.value }))
+              }
+              placeholder="VD: TP.HCM"
+            />
+          </label>
           <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Save</AppButton>
+            <AppButton type="submit">Lưu</AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setOpenModal(false)}>
-              Cancel
+              Hủy
             </AppButton>
           </div>
         </form>

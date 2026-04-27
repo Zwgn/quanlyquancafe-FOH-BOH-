@@ -1,15 +1,17 @@
 ﻿import React, { FormEvent } from "react";
-import { MdEdit, MdOutlineRemoveRedEye } from "react-icons/md";
+import { MdEdit, MdOutlineRemoveRedEye, MdPrint } from "react-icons/md";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
 import { useOrdersManagement } from "../hooks/useOrdersManagement";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getOrderStatusLabel, isPaidOrder } from "../utils/orderMapper";
+import { escapeHtmlText, openPrintWindow } from "../utils/printDocument";
 import "../assets/styles/orders.css";
+import { resolveImageUrl } from "../utils/imageUrl";
 
 const OrdersPage = () => {
-  usePageTitle("Đơn hàng | DungCafe Quản trị");
+  usePageTitle("Đơn hàng | Coffee Management System");
 
   const {
     orders,
@@ -26,22 +28,20 @@ const OrdersPage = () => {
     setOpenDetailModal,
     editingOrder,
     tables,
+    availableTables,
     menuOptions,
     currentEmployeeId,
     currentEmployeeName,
     existingItems,
     cartItems,
-    selectedMenuItemId,
-    setSelectedMenuItemId,
-    selectedQuantity,
-    setSelectedQuantity,
     form,
     setForm,
     loading,
     error,
     openCreateOrderModal,
     openEditOrderModal,
-    addSelectedItemToCart,
+    addProductToCart,
+    updateCartItemQuantity,
     removeItemFromCart,
     handleCreateOrder,
     handleUpdateStatus,
@@ -83,12 +83,10 @@ const OrdersPage = () => {
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="open">Chờ xử lý</option>
-            <option value="pending">Chờ xử lý</option>
             <option value="preparing">Đang chuẩn bị</option>
             <option value="ready">Sẵn sàng</option>
             <option value="served">Đã phục vụ</option>
-            <option value="completed">Đã thanh toán</option>
-            <option value="paid">Đã thanh toán</option>
+            <option value="completed">Hoàn thành</option>
             <option value="cancelled">Đã hủy</option>
           </select>
         </div>
@@ -117,7 +115,7 @@ const OrdersPage = () => {
                 orders.map((order) => (
                   <tr key={order.id}>
                     <td className="orders-id">#{order.id.slice(0, 8)}</td>
-                    <td>Bàn {order.tableId.slice(0, 6)}</td>
+                    <td>{order.tableName || `Bàn ${order.tableId.slice(0, 6)}`}</td>
                     <td>{order.createdAt}</td>
                     <td>{order.paidAt ?? "-"}</td>
                     <td className="orders-total">{formatCurrency(order.totalAmount)}</td>
@@ -134,14 +132,16 @@ const OrdersPage = () => {
                     </td>
                     <td>
                       <div className="orders-row-actions">
-                        <button
-                          type="button"
-                          className="orders-edit-button"
-                          onClick={() => void openEditOrderModal(order)}
-                          aria-label="Sửa đơn hàng"
-                        >
-                          {React.createElement(MdEdit as any, { size: 20 })}
-                        </button>
+                        {!isPaidOrder(order.status) ? (
+                          <button
+                            type="button"
+                            className="orders-edit-button"
+                            onClick={() => void openEditOrderModal(order)}
+                            aria-label="Sửa đơn hàng"
+                          >
+                            {React.createElement(MdEdit as any, { size: 20 })}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="orders-eye-button"
@@ -164,120 +164,170 @@ const OrdersPage = () => {
         open={openCreateModal}
         title={editingOrder ? "Sửa đơn hàng" : "Tạo đơn mới"}
         onClose={() => setOpenCreateModal(false)}
+        wide
       >
-        <form className="form-grid" onSubmit={handleCreateSubmit}>
-          <label className="form-field">
-            <span>Chọn bàn *</span>
-            <select
-              value={form.tableId}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, tableId: event.target.value }))
-              }
-              required
-              disabled={Boolean(editingOrder)}
-            >
-              <option value="">-- Vui lòng chọn bàn --</option>
-              {tables.map((table) => (
-                <option key={table.id} value={table.id}>
-                  {table.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="form-field">
-            <span>Nhân viên tạo đơn</span>
-            <input
-              value={currentEmployeeName || form.employeeId || "-"}
-              readOnly
-              disabled
-            />
-          </label>
-
-          {editingOrder ? (
-            <p className="orders-form-note form-field-span">
-              Đang sửa đơn hiện có: chỉ thêm sản phẩm vào đơn, không thay đổi bàn và nhân viên.
-            </p>
-          ) : !currentEmployeeId ? (
-            <p className="orders-form-note form-field-span">
-              Không tìm thấy Employee ID của tài khoản đăng nhập. Vui lòng đăng nhập lại bằng tài khoản nhân viên.
-            </p>
-          ) : null}
-
-          <div className="orders-product-picker form-field-span">
+        <form className="orders-create-form" onSubmit={handleCreateSubmit}>
+          <div className="orders-create-top-row">
             <label className="form-field">
-              <span>Chọn sản phẩm</span>
+              <span>Chọn bàn <span className="orders-required">*</span></span>
               <select
-                value={selectedMenuItemId}
-                onChange={(event) => setSelectedMenuItemId(event.target.value)}
+                value={form.tableId}
+                onChange={(event) =>
+                  setForm((previous) => ({ ...previous, tableId: event.target.value }))
+                }
+                required
+                disabled={Boolean(editingOrder)}
               >
-                <option value="">-- Chọn sản phẩm --</option>
-                {menuOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} - {formatCurrency(item.price)}
+                <option value="">-- Vui lòng chọn bàn --</option>
+                {(editingOrder ? tables : availableTables).map((table) => (
+                  <option key={table.id} value={table.id}>
+                    {table.name}
                   </option>
                 ))}
               </select>
             </label>
 
-            <label className="form-field orders-qty-field">
-              <span>Số lượng</span>
+            <label className="form-field">
+              <span>Nhân viên tạo đơn</span>
               <input
-                type="number"
-                min={1}
-                value={selectedQuantity}
-                onChange={(event) => setSelectedQuantity(event.target.value)}
+                value={currentEmployeeName || form.employeeId || "-"}
+                readOnly
+                disabled
               />
             </label>
+          </div>
 
-            <AppButton type="button" variant="secondary" onClick={addSelectedItemToCart}>
-              + Thêm vào giỏ
-            </AppButton>
+          {editingOrder ? (
+            <p className="orders-form-note">
+              Đang sửa đơn hiện có: chỉ thêm sản phẩm vào đơn, không thay đổi bàn và nhân viên.
+            </p>
+          ) : !currentEmployeeId ? (
+            <p className="orders-form-note orders-form-note-warn">
+              Không tìm thấy Employee ID của tài khoản đăng nhập. Vui lòng đăng nhập lại bằng tài khoản nhân viên.
+            </p>
+          ) : null}
+
+          <div className="orders-product-section">
+            <h4 className="orders-section-title">Chọn sản phẩm</h4>
+            <div className="orders-product-grid">
+              {menuOptions.map((item) => (
+                <div
+                  key={item.id}
+                  className="orders-product-card"
+                  onClick={() => addProductToCart(item.id)}
+                >
+                  {item.imgUrl ? (
+                    <img className="orders-product-card-img" src={resolveImageUrl(item.imgUrl)} alt={item.name} />
+                  ) : (
+                    <div className="orders-product-card-img orders-product-card-placeholder">☕</div>
+                  )}
+                  <h5 className="orders-product-card-name">{item.name}</h5>
+                  <p className="orders-product-card-price">{formatCurrency(item.price)}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {editingOrder && existingItems.length > 0 ? (
-            <div className="orders-cart-box form-field-span">
-              <h4 className="orders-cart-title">Món hiện có trong đơn</h4>
-              <div className="orders-cart-list">
-                {existingItems.map((item, index) => (
-                  <div key={`${item.name}-${index}`} className="orders-cart-item">
-                    <span>{item.name} x{item.quantity}</span>
-                    <strong>{formatCurrency(item.total)}</strong>
-                  </div>
-                ))}
-              </div>
+            <div className="orders-cart-box">
+              <h4 className="orders-section-title">Món hiện có trong đơn</h4>
+              <table className="orders-cart-table">
+                <thead>
+                  <tr>
+                    <th>Món</th>
+                    <th style={{ textAlign: "center" }}>SL</th>
+                    <th style={{ textAlign: "right" }}>Đơn giá</th>
+                    <th style={{ textAlign: "right" }}>Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {existingItems.map((item, index) => (
+                    <tr key={`${item.name}-${index}`}>
+                      <td>{item.name}</td>
+                      <td style={{ textAlign: "center" }}>{item.quantity}</td>
+                      <td style={{ textAlign: "right" }}>{formatCurrency(item.price)}</td>
+                      <td style={{ textAlign: "right" }}>{formatCurrency(item.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : null}
 
-          <div className="orders-cart-box form-field-span">
-            <h4 className="orders-cart-title">Giỏ hàng thêm mới</h4>
+          <div className="orders-cart-box">
+            <h4 className="orders-section-title">Giỏ hàng thêm mới</h4>
             {cartItems.length === 0 ? (
-              <p className="orders-empty-inline">Chưa có sản phẩm trong giỏ hàng</p>
-            ) : (
-              <div className="orders-cart-list">
-                {cartItems.map((item) => (
-                  <div key={item.menuItemId} className="orders-cart-item">
-                    <span>
-                      {item.name} x{item.quantity}
-                    </span>
-                    <div className="orders-cart-item-actions">
-                      <strong>{formatCurrency(item.price * item.quantity)}</strong>
-                      <button
-                        type="button"
-                        className="orders-link-button"
-                        onClick={() => removeItemFromCart(item.menuItemId)}
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="orders-cart-empty">
+                <span className="orders-cart-empty-icon">🛒</span>
+                <p>Chưa có sản phẩm trong giỏ hàng</p>
               </div>
+            ) : (
+              <>
+                <table className="orders-cart-table">
+                  <thead>
+                    <tr>
+                      <th>Món</th>
+                      <th style={{ textAlign: "center" }}>Số lượng</th>
+                      <th style={{ textAlign: "right" }}>Đơn giá</th>
+                      <th style={{ textAlign: "right" }}>Thành tiền</th>
+                      <th style={{ textAlign: "center", width: 50 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cartItems.map((item) => (
+                      <tr key={item.menuItemId}>
+                        <td>{item.name}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <div className="orders-qty-controls">
+                            <button
+                              type="button"
+                              className="orders-qty-btn"
+                              onClick={() => updateCartItemQuantity(item.menuItemId, -1)}
+                            >
+                              −
+                            </button>
+                            <span className="orders-qty-value">{item.quantity}</span>
+                            <button
+                              type="button"
+                              className="orders-qty-btn"
+                              onClick={() => updateCartItemQuantity(item.menuItemId, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatCurrency(item.price)}</td>
+                        <td style={{ textAlign: "right", fontWeight: 600 }}>
+                          {formatCurrency(item.price * item.quantity)}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            type="button"
+                            className="orders-link-button"
+                            onClick={() => removeItemFromCart(item.menuItemId)}
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: "right", fontWeight: 600 }}>TỔNG:</td>
+                      <td className="orders-cart-total-value">
+                        {formatCurrency(cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0))}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </>
             )}
           </div>
 
-          <div className="module-row-actions form-field-span">
-            <AppButton type="submit">
+          <div className="orders-create-footer">
+            <AppButton type="submit" disabled={cartItems.length === 0}>
               {editingOrder ? "Lưu thay đổi" : "Tạo đơn hàng"}
             </AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setOpenCreateModal(false)}>
@@ -289,91 +339,184 @@ const OrdersPage = () => {
 
       <AppModal
         open={openDetailModal}
-        title="Chi tiết đơn hàng"
+        title={`Chi tiết đơn hàng #${selectedOrder?.id.slice(0, 8) ?? ""}`}
         onClose={() => setOpenDetailModal(false)}
       >
         {selectedOrder ? (
           <div className="orders-detail-panel">
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <AppButton
+                variant="secondary"
+                onClick={() => {
+                  if (!selectedOrder || !selectedOrderDetail) return;
+                  const rows = selectedOrderDetail.items
+                    .map(
+                      (item) => `
+                      <tr>
+                        <td>${escapeHtmlText(item.name)}</td>
+                        <td class="num">${item.quantity}</td>
+                        <td class="num">${formatCurrency(item.price)}</td>
+                        <td class="num">${formatCurrency(item.price * item.quantity)}</td>
+                      </tr>`
+                    )
+                    .join("");
+                  const html = `
+                    <div class="doc-header">
+                      <div class="doc-brand">DungCafe</div>
+                      <div class="doc-brand-tagline">Hệ thống quản lý quán cà phê</div>
+                      <div class="doc-title">Hóa đơn thanh toán</div>
+                    </div>
+                    <div class="doc-meta">
+                      <div>
+                        <p><strong>Mã đơn:</strong> #${escapeHtmlText(selectedOrder.id.slice(0, 8).toUpperCase())}</p>
+                        <p><strong>Bàn:</strong> ${escapeHtmlText(selectedOrderDetail.tableName)}</p>
+                        <p><strong>Nhân viên:</strong> ${escapeHtmlText(selectedOrderDetail.employeeName)}</p>
+                      </div>
+                      <div>
+                        <p><strong>Trạng thái:</strong> ${escapeHtmlText(getOrderStatusLabel(selectedOrderDetail.status))}</p>
+                        <p><strong>Thời gian tạo:</strong> ${escapeHtmlText(selectedOrderDetail.createdAt)}</p>
+                        <p><strong>Ngày in:</strong> ${new Date().toLocaleString("vi-VN")}</p>
+                      </div>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Món</th>
+                          <th class="num">SL</th>
+                          <th class="num">Đơn giá</th>
+                          <th class="num">Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody>${rows || `<tr><td colspan="4" style="text-align:center;color:#888;">Không có món</td></tr>`}</tbody>
+                      <tfoot>
+                        <tr>
+                          <td colspan="3" class="num">TỔNG CỘNG</td>
+                          <td class="num">${formatCurrency(selectedOrder.totalAmount)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div class="doc-footer">
+                      Cảm ơn quý khách! Hẹn gặp lại tại DungCafe.
+                    </div>
+                  `;
+                  openPrintWindow(html, `HoaDon-${selectedOrder.id.slice(0, 8)}`);
+                }}
+                disabled={!selectedOrderDetail}
+              >
+                {React.createElement(MdPrint as any, { size: 18, style: { marginRight: 6, verticalAlign: "middle" } })}
+                In hóa đơn
+              </AppButton>
+            </div>
+
             {detailLoading ? <p className="orders-empty">Đang tải chi tiết...</p> : null}
 
             {selectedOrderDetail ? (
               <>
-                <div className="orders-detail-grid">
-                  <p>
-                    <strong>Mã đơn:</strong> #{selectedOrderDetail.id}
-                  </p>
-                  <p>
-                    <strong>Bàn:</strong> {selectedOrderDetail.tableName}
-                  </p>
-                  <p>
-                    <strong>Nhân viên:</strong> {selectedOrderDetail.employeeName}
-                  </p>
-                  <p>
-                    <strong>Tạo lúc:</strong> {selectedOrderDetail.createdAt}
-                  </p>
-                  <p>
-                    <strong>Tổng tiền:</strong> {formatCurrency(selectedOrder.totalAmount)}
-                  </p>
+                <div className="orders-detail-info">
+                  <div className="orders-detail-info-grid">
+                    <div className="orders-detail-info-item">
+                      <span className="orders-detail-label">BÀN</span>
+                      <span className="orders-detail-value">{selectedOrderDetail.tableName}</span>
+                    </div>
+                    <div className="orders-detail-info-item">
+                      <span className="orders-detail-label">TRẠNG THÁI</span>
+                      <span className={`orders-status-chip ${isPaidOrder(selectedOrderDetail.status) ? "orders-status-paid" : ""}`}>
+                        {getOrderStatusLabel(selectedOrderDetail.status)}
+                      </span>
+                    </div>
+                    <div className="orders-detail-info-item">
+                      <span className="orders-detail-label">NHÂN VIÊN</span>
+                      <span className="orders-detail-value">{selectedOrderDetail.employeeName}</span>
+                    </div>
+                    <div className="orders-detail-info-item">
+                      <span className="orders-detail-label">THỜI GIAN TẠO</span>
+                      <span className="orders-detail-value">{selectedOrderDetail.createdAt}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="orders-detail-items-list">
+                <div className="orders-detail-items-section">
+                  <h4 className="orders-section-title">Sản phẩm đã đặt</h4>
                   {selectedOrderDetail.items.length === 0 ? (
                     <p className="orders-empty">Đơn hàng chưa có món.</p>
                   ) : (
-                    selectedOrderDetail.items.map((item, index) => (
-                      <article className="orders-item-row" key={`${item.name}-${index}`}>
-                        <div className="orders-item-image-wrap">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="orders-item-image" />
-                          ) : (
-                            <div className="orders-item-image orders-item-image-placeholder">Không ảnh</div>
-                          )}
-                        </div>
-                        <div className="orders-item-content">
-                          <p className="orders-item-name">{item.name}</p>
-                          <p className="orders-item-meta">SL: {item.quantity} • {item.status}</p>
-                        </div>
-                        <div className="orders-item-price-wrap">
-                          <p className="orders-item-price">{formatCurrency(item.price)}</p>
-                          <p className="orders-item-total">{formatCurrency(item.total)}</p>
-                        </div>
-                      </article>
-                    ))
+                    <table className="orders-detail-items-table">
+                      <thead>
+                        <tr>
+                          <th>Món</th>
+                          <th style={{ textAlign: "center" }}>SL</th>
+                          <th style={{ textAlign: "right" }}>Đơn giá</th>
+                          <th style={{ textAlign: "right" }}>Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOrderDetail.items.map((item, index) => (
+                          <tr key={`${item.name}-${index}`}>
+                            <td>
+                              <div className="orders-detail-item-cell">
+                                {item.imageUrl ? (
+                                  <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="orders-detail-item-thumb" />
+                                ) : null}
+                                <span>{item.name}</span>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "center" }}>{item.quantity}</td>
+                            <td style={{ textAlign: "right" }}>{formatCurrency(item.price)}</td>
+                            <td style={{ textAlign: "right" }}>{formatCurrency(item.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3} style={{ textAlign: "right", fontWeight: 600 }}>TỔNG CỘNG:</td>
+                          <td className="orders-detail-total-value">
+                            {formatCurrency(selectedOrder.totalAmount)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   )}
                 </div>
               </>
             ) : null}
 
             <div className="orders-detail-actions">
-              <select
-                value={selectedOrder.status}
-                onChange={(event) =>
-                  void handleUpdateStatus(selectedOrder.id, event.target.value)
-                }
-              >
-                <option value="Open">Open</option>
-                <option value="Pending">Pending</option>
-                <option value="Preparing">Preparing</option>
-                <option value="Ready">Ready</option>
-                <option value="Served">Served</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+              {isPaidOrder(selectedOrder.status) ? (
+                <p className="orders-form-note">
+                  Đơn hàng đã thanh toán. Không thể chỉnh sửa hoặc xóa.
+                </p>
+              ) : (
+                <>
+                  <select
+                    value={selectedOrder.status}
+                    onChange={(event) =>
+                      void handleUpdateStatus(selectedOrder.id, event.target.value)
+                    }
+                  >
+                    <option value="Open">Chờ xử lý</option>
+                    <option value="Preparing">Đang chuẩn bị</option>
+                    <option value="Ready">Sẵn sàng</option>
+                    <option value="Served">Đã phục vụ</option>
+                    <option value="Completed">Hoàn thành</option>
+                    <option value="Cancelled">Đã hủy</option>
+                  </select>
 
-              <AppButton
-                variant="secondary"
-                onClick={() => void handleCheckoutOrder(selectedOrder.id)}
-                disabled={!canCheckoutOrder(selectedOrder)}
-              >
-                Thanh toán
-              </AppButton>
+                  {canCheckoutOrder(selectedOrder) ? (
+                    <AppButton
+                      onClick={() => void handleCheckoutOrder(selectedOrder.id)}
+                    >
+                      Thanh toán
+                    </AppButton>
+                  ) : null}
 
-              <AppButton
-                variant="danger"
-                onClick={() => void handleDeleteOrder(selectedOrder.id)}
-              >
-                Xóa đơn
-              </AppButton>
+                  <AppButton
+                    variant="danger"
+                    onClick={() => void handleDeleteOrder(selectedOrder.id)}
+                  >
+                    Xóa đơn
+                  </AppButton>
+                </>
+              )}
             </div>
           </div>
         ) : null}

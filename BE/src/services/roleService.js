@@ -12,7 +12,7 @@ const create = async (name) => {
   await pool.request()
     .input('Name', sql.NVarChar(50), name)
     .execute('sp_Roles_Create');
-  return { message: 'Role created successfully' };
+  return { message: 'Tạo vai trò thành công' };
 };
 
 module.exports = {

@@ -13,13 +13,13 @@ const getAll = async (req, res) => {
 
 const create = async (req, res) => {
   try {
-    const { userId, name, phone } = req.body;
+    const { userId, name, phone, gender, birthDate, role, salary, address } = req.body;
 
-    if (!userId || !name || !phone) {
-      return error(res, 'Vui lòng nhập đầy đủ ID người dùng, tên và số điện thoại.', 400);
+    if (!name || !phone) {
+      return error(res, 'Vui lòng nhập đầy đủ tên và số điện thoại.', 400);
     }
 
-    const result = await employeeService.create(userId, name, phone);
+    const result = await employeeService.create(userId, name, phone, gender, birthDate, role, salary, address);
     return success(res, result, 'Nhân viên được tạo thành công.', 201);
   } catch (err) {
     console.error('Lỗi khi tạo nhân viên', err);
@@ -30,13 +30,13 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone } = req.body;
+    const { name, phone, gender, birthDate, role, salary, address } = req.body;
 
     if (!name || !phone) {
       return error(res, 'Vui lòng nhập đầy đủ tên và số điện thoại.', 400);
     }
 
-    const result = await employeeService.update(id, name, phone);
+    const result = await employeeService.update(id, name, phone, gender, birthDate, role, salary, address);
     return success(res, result, 'Nhân viên được cập nhật thành công');
   } catch (err) {
     console.error('Lỗi khi cập nhật nhân viên:', err);

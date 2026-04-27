@@ -1,175 +1,86 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
 import StatCard from "../components/ui/StatCard";
 import AppButton from "../components/ui/AppButton";
-import AppModal from "../components/ui/AppModal";
 import DataTable, { DataColumn } from "../components/ui/DataTable";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { DashboardStats } from "../types/dashboard";
 import { formatCurrency } from "../utils/formatCurrency";
-import { getDashboardStats } from "../services/dashboardService";
-import {
-  createNewOrder,
-  deleteExistingOrder,
-  getOrdersList,
-  updateExistingOrderStatus
-} from "../services/ordersService";
+import useDashboard, { DashboardOrder } from "../hooks/useDashboard";
 import "../assets/styles/dashboard.css";
 
-const defaultStats: DashboardStats = {
-  totalRevenue: 125000000,
-  totalOrders: 356,
-  totalProducts: 84,
-  activeEmployees: 12
-};
+const TERMINAL_STATUSES = new Set(["Paid", "Completed", "Cancelled", "Served"]);
 
-interface DashboardOrder {
-  id: string;
-  tableId: string;
-  employeeId: string;
-  status: string;
-  createdAt: string;
-}
-
-const PAGE_SIZE = 6;
-
-const mapOrder = (input: unknown, index: number): DashboardOrder => {
-  const row = (input ?? {}) as Record<string, unknown>;
-
-  return {
-    id: String(row.id ?? row.Id ?? row.orderId ?? row.OrderId ?? index),
-    tableId: String(row.tableId ?? row.TableId ?? "-"),
-    employeeId: String(row.employeeId ?? row.EmployeeId ?? "-"),
-    status: String(row.status ?? row.Status ?? "Pending"),
-    createdAt: String(row.createdAt ?? row.CreatedAt ?? "-")
-  };
+const getCurrentRole = (): string => {
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return "";
+    return ((JSON.parse(raw) as { role?: string }).role ?? "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
 };
 
 const DashboardPage = () => {
-  usePageTitle("Dashboard | DungCafe Admin");
-  const [stats, setStats] = useState<DashboardStats>(defaultStats);
-  const [orders, setOrders] = useState<DashboardOrder[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [orderModal, setOrderModal] = useState(false);
-  const [orderForm, setOrderForm] = useState({ tableId: "", employeeId: "" });
-  const [error, setError] = useState<string | null>(null);
+  usePageTitle("Bảng điều khiển | Coffee Management System");
 
-  const loadOrders = async () => {
-    const response = await getOrdersList();
-    setOrders(response.map(mapOrder));
-  };
-
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [data] = await Promise.all([getDashboardStats(), loadOrders()]);
-        setStats(data);
-      } catch {
-        setError("Không tải được dữ liệu dashboard.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadStats();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return orders;
-    }
-
-    return orders.filter((item) =>
-      [item.id, item.tableId, item.employeeId, item.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword)
-    );
-  }, [orders, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const handleCreateOrder = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!orderForm.tableId.trim() || !orderForm.employeeId.trim()) {
-      setError("Table ID và Employee ID là bắt buộc.");
-      return;
-    }
-
-    try {
-      await createNewOrder({
-        tableId: orderForm.tableId.trim(),
-        employeeId: orderForm.employeeId.trim()
-      });
-      setOrderModal(false);
-      setOrderForm({ tableId: "", employeeId: "" });
-      await loadOrders();
-    } catch {
-      setError("Không tạo được order mới.");
-    }
-  };
-
-  const handleDeleteOrder = async (id: string) => {
-    try {
-      await deleteExistingOrder(id);
-      await loadOrders();
-    } catch {
-      setError("Không xóa được order.");
-    }
-  };
-
-  const handleStatusToggle = async (id: string, status: string) => {
-    try {
-      await updateExistingOrderStatus(id, { status });
-      await loadOrders();
-    } catch {
-      setError("Không thể cập nhật trạng thái.");
-    }
-  };
+  const {
+    stats,
+    orders: pagedRows,
+    tableMap, employeeMap,
+    search, setSearch,
+    page, setPage, currentPage, totalPages,
+    loading, error,
+    handleDeleteOrder, handleStatusToggle
+  } = useDashboard();
 
   const columns: DataColumn<DashboardOrder>[] = [
-    { key: "id", header: "Order", render: (row) => row.id },
-    { key: "table", header: "Table", render: (row) => row.tableId },
-    { key: "employee", header: "Employee", render: (row) => row.employeeId },
+    {
+      key: "id",
+      header: "Đơn hàng",
+      render: (row) => `#${row.id.slice(0, 8).toUpperCase()}`
+    },
+    {
+      key: "table",
+      header: "Bàn",
+      render: (row) => tableMap[row.tableId] || `Bàn ${row.tableId.slice(0, 6)}`
+    },
+    {
+      key: "employee",
+      header: "Nhân viên",
+      render: (row) => employeeMap[row.employeeId] || "-"
+    },
     {
       key: "status",
-      header: "Status",
+      header: "Trạng thái",
       render: (row) => (
         <select
           value={row.status}
           onChange={(event) => void handleStatusToggle(row.id, event.target.value)}
         >
-          <option value="Pending">Pending</option>
-          <option value="Preparing">Preparing</option>
-          <option value="Served">Served</option>
-          <option value="Paid">Paid</option>
-          <option value="Cancelled">Cancelled</option>
+          <option value="Open">Chờ xử lý</option>
+          <option value="Preparing">Đang chuẩn bị</option>
+          <option value="Ready">Sẵn sàng</option>
+          <option value="Completed">Hoàn thành</option>
+          <option value="Served">Đã phục vụ</option>
+          <option value="Paid">Đã thanh toán</option>
+          <option value="Cancelled">Đã hủy</option>
         </select>
       )
     },
-    { key: "created", header: "Created", render: (row) => row.createdAt },
+    { key: "created", header: "Ngày tạo", render: (row) => row.createdAt },
     {
       key: "actions",
-      header: "Actions",
-      render: (row) => (
-        <div className="module-row-actions">
-          <AppButton variant="danger" onClick={() => void handleDeleteOrder(row.id)}>
-            Delete
-          </AppButton>
-        </div>
-      )
+      header: "Hành động",
+      render: (row) => {
+        const isAdmin = getCurrentRole() === "quản lý";
+        const canDelete = isAdmin || !TERMINAL_STATUSES.has(row.status);
+        if (!canDelete) return null;
+        return (
+          <div className="module-row-actions">
+            <AppButton variant="danger" onClick={() => void handleDeleteOrder(row.id)}>
+              Xóa
+            </AppButton>
+          </div>
+        );
+      }
     }
   ];
 
@@ -177,12 +88,11 @@ const DashboardPage = () => {
     <div className="module-page dashboard-page">
       <div className="module-header">
         <div>
-          <h2 className="module-title">Dashboard Overview</h2>
-          <p className="module-breadcrumb">Dashboard / Overview</p>
+          <h2 className="module-title">Bảng điều khiển tổng quan</h2>
+          <p className="module-breadcrumb">Bảng điều khiển / Tổng quan</p>
         </div>
-        <AppButton onClick={() => setOrderModal(true)}>Add Quick Order</AppButton>
       </div>
-      {loading ? <p>Dang tai du lieu...</p> : null}
+      {loading ? <p>Đang tải dữ liệu...</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       <div className="dashboard-grid">
         <StatCard title="Tổng doanh thu" value={formatCurrency(stats.totalRevenue)} />
@@ -193,80 +103,28 @@ const DashboardPage = () => {
 
       <section className="module-card">
         <div className="module-toolbar">
-          <h3 className="panel-title">Recent Orders</h3>
+          <h3 className="panel-title">Đơn hàng gần đây</h3>
           <input
             className="module-search"
             value={search}
-            placeholder="Search orders"
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            placeholder="Tìm kiếm đơn hàng"
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <DataTable
           columns={columns}
           rows={pagedRows}
           rowKey={(row) => row.id}
-          emptyText="No recent orders found."
+          emptyText="Không có đơn hàng gần đây."
         />
         <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
+          <span>Trang {currentPage}/{totalPages}</span>
           <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Trước</AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Sau</AppButton>
           </div>
         </div>
       </section>
-
-      <AppModal
-        open={orderModal}
-        title="Create Quick Order"
-        onClose={() => setOrderModal(false)}
-      >
-        <form className="form-grid" onSubmit={handleCreateOrder}>
-          <label className="form-field">
-            <span>Table ID</span>
-            <input
-              value={orderForm.tableId}
-              onChange={(event) =>
-                setOrderForm((previous) => ({ ...previous, tableId: event.target.value }))
-              }
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>Employee ID</span>
-            <input
-              value={orderForm.employeeId}
-              onChange={(event) =>
-                setOrderForm((previous) => ({ ...previous, employeeId: event.target.value }))
-              }
-              required
-            />
-          </label>
-          <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Create</AppButton>
-            <AppButton type="button" variant="ghost" onClick={() => setOrderModal(false)}>
-              Cancel
-            </AppButton>
-          </div>
-        </form>
-      </AppModal>
     </div>
   );
 };

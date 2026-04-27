@@ -22,7 +22,7 @@ const create = async (username, password, roleId) => {
     .input('Password', sql.NVarChar(100), password)
     .input('RoleId', sql.UniqueIdentifier, roleId)
     .execute('sp_Users_Create');
-  return { message: 'User created successfully' };
+  return { message: 'Tạo người dùng thành công' };
 };
 
 const update = async (id, username, password, roleId) => {
@@ -30,10 +30,10 @@ const update = async (id, username, password, roleId) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .input('Username', sql.NVarChar(50), username)
-    .input('Password', sql.NVarChar(100), password)
+    .input('Password', sql.NVarChar(100), password ?? null)
     .input('RoleId', sql.UniqueIdentifier, roleId)
     .execute('sp_Users_Update');
-  return { message: 'User updated successfully' };
+  return { message: 'Cập nhật người dùng thành công' };
 };
 
 const remove = async (id) => {
@@ -41,7 +41,16 @@ const remove = async (id) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .execute('sp_Users_Delete');
-  return { message: 'User deleted successfully' };
+  return { message: 'Xóa người dùng thành công' };
+};
+
+const resetPassword = async (id, newPassword) => {
+  const pool = await getPool();
+  await pool.request()
+    .input('Id', sql.UniqueIdentifier, id)
+    .input('NewPassword', sql.NVarChar(100), newPassword)
+    .execute('sp_Users_ResetPassword');
+  return { message: 'Đặt lại mật khẩu thành công' };
 };
 
 module.exports = {
@@ -49,5 +58,6 @@ module.exports = {
   getById,
   create,
   update,
-  remove
+  remove,
+  resetPassword
 };

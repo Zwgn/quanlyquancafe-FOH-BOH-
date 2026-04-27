@@ -13,7 +13,7 @@ const create = async (name, capacity) => {
     .input('Name', sql.NVarChar(50), name)
     .input('Capacity', sql.Int, capacity)
     .execute('sp_Tables_Create');
-  return { message: 'Table created successfully' };
+  return { message: 'Thêm bàn thành công' };
 };
 
 const update = async (id, name, capacity) => {
@@ -23,7 +23,7 @@ const update = async (id, name, capacity) => {
     .input('Name', sql.NVarChar(50), name)
     .input('Capacity', sql.Int, capacity)
     .execute('sp_Tables_Update');
-  return { message: 'Table updated successfully' };
+  return { message: 'Cập nhật bàn thành công' };
 };
 
 const updateStatus = async (id, status) => {
@@ -32,7 +32,7 @@ const updateStatus = async (id, status) => {
     .input('Id', sql.UniqueIdentifier, id)
     .input('Status', sql.NVarChar(20), status)
     .execute('sp_Tables_UpdateStatus');
-  return { message: 'Table status updated successfully' };
+  return { message: 'Cập nhật trạng thái bàn thành công' };
 };
 
 module.exports = {

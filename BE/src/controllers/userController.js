@@ -48,11 +48,11 @@ const update = async (req, res) => {
     const { id } = req.params;
     const { username, password, roleId } = req.body;
 
-    if (!username || !password || !roleId) {
-      return error(res, 'Tên người dùng, mật khẩu và roleId là bắt buộc.', 400);
+    if (!username || !roleId) {
+      return error(res, 'Tên người dùng và roleId là bắt buộc.', 400);
     }
 
-    const result = await userService.update(id, username, password, roleId);
+    const result = await userService.update(id, username, password || null, roleId);
     return success(res, result, 'Người dùng được cập nhật thành công.');
   } catch (err) {
     console.error('Lỗi khi cập nhật người dùng:', err);
@@ -71,10 +71,33 @@ const remove = async (req, res) => {
   }
 };
 
+const DEFAULT_RESET_PASSWORD = '123456';
+
+const resetPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body || {};
+    const finalPassword =
+      typeof newPassword === 'string' && newPassword.trim().length > 0
+        ? newPassword.trim()
+        : DEFAULT_RESET_PASSWORD;
+
+    const result = await userService.resetPassword(id, finalPassword);
+    return success(res, result, 'Đặt lại mật khẩu thành công.');
+  } catch (err) {
+    console.error('Lỗi khi đặt lại mật khẩu:', err);
+    const message = err?.message?.includes('không tồn tại')
+      ? 'Người dùng không tồn tại.'
+      : 'Không thể đặt lại mật khẩu.';
+    return error(res, message, 500);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
   create,
   update,
-  remove
+  remove,
+  resetPassword
 };

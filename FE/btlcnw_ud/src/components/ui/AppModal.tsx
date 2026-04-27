@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
+import { MdClose } from "react-icons/md";
 import "../../assets/styles/ui-modal.css";
 
 interface AppModalProps {
@@ -7,9 +8,10 @@ interface AppModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  wide?: boolean;
 }
 
-const AppModal = ({ open, title, onClose, children, footer }: AppModalProps) => {
+const AppModal = ({ open, title, onClose, children, footer, wide }: AppModalProps) => {
   if (!open) {
     return null;
   }
@@ -17,7 +19,7 @@ const AppModal = ({ open, title, onClose, children, footer }: AppModalProps) => 
   return (
     <div className="ui-modal-backdrop" onClick={onClose} role="presentation">
       <section
-        className="ui-modal"
+        className={`ui-modal${wide ? " ui-modal-wide" : ""}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -28,9 +30,9 @@ const AppModal = ({ open, title, onClose, children, footer }: AppModalProps) => 
             type="button"
             className="ui-modal-close"
             onClick={onClose}
-            aria-label="Close modal"
+            aria-label="Đóng hộp thoại"
           >
-            x
+            {React.createElement(MdClose as any, { size: 18 })}
           </button>
         </header>
         <div className="ui-modal-content">{children}</div>

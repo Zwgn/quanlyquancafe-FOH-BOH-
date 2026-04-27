@@ -1,306 +1,338 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  createNewMenuItem,
-  deleteExistingMenuItem,
-  getMenuItemsList,
-  updateExistingMenuItem
-} from "../services/menuService";
+﻿import { FormEvent, useState } from "react";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
-import DataTable, { DataColumn } from "../components/ui/DataTable";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useMenuManagement } from "../hooks/useMenuManagement";
+import { useConfirm } from "../components/ui/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
+import {
+  createMenuCategory,
+  deleteMenuCategory,
+  updateMenuCategory
+} from "../api/menuCategoryApi";
 import "../assets/styles/menu.css";
-
-interface MenuRow {
-  id: string;
-  name: string;
-  category: string;
-  categoryId: string;
-  price: number;
-  active: boolean;
-}
-
-const PAGE_SIZE = 8;
-
-const mapMenuItem = (input: unknown, index: number): MenuRow => {
-  const row = (input ?? {}) as Record<string, unknown>;
-
-  return {
-    id: String(row.id ?? row.Id ?? row.menuItemId ?? row.MenuItemId ?? index),
-    name: String(row.name ?? row.Name ?? "Unnamed item"),
-    category: String(
-      row.category ?? row.Category ?? row.categoryName ?? row.CategoryName ?? row.categoryId ?? row.CategoryId ?? "-"
-    ),
-    categoryId: String(row.categoryId ?? row.CategoryId ?? "-"),
-    price: Number(row.price ?? row.Price ?? 0),
-    active: Boolean(row.active ?? row.Active ?? row.isActive ?? row.IsActive ?? true)
-  };
-};
+import { resolveImageUrl } from "../utils/imageUrl";
 
 const MenuPage = () => {
-  usePageTitle("Menu | DungCafe Admin");
+  usePageTitle("Thực đơn | Coffee Management System");
+  const confirm = useConfirm();
+  const {
+    items,
+    categories,
+    keyword,
+    setKeyword,
+    categoryFilter,
+    setCategoryFilter,
+    openModal,
+    setOpenModal,
+    editingItem,
+    error,
+    loading,
+    form,
+    setForm,
+    imageFile,
+    setImageFile,
+    uploading,
+    openCreateModal,
+    openEditModal,
+    handleSaveItem,
+    handleDeleteItem,
+    reloadMenuData
+  } = useMenuManagement();
 
-  const [menuItems, setMenuItems] = useState<MenuRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<MenuRow | null>(null);
-  const [form, setForm] = useState({ name: "", categoryId: "", price: 0 });
+  const [openCategoryModal, setOpenCategoryModal] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const loadMenu = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getMenuItemsList();
-      setMenuItems(response.map(mapMenuItem));
-    } catch {
-      setError("Không tải được danh sách menu.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadMenu();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return menuItems;
-    }
-
-    return menuItems.filter((item) =>
-      [item.name, item.category, item.categoryId, item.price]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword)
-    );
-  }, [menuItems, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const openCreateModal = () => {
-    setEditingItem(null);
-    setForm({ name: "", categoryId: "", price: 0 });
-    setOpenModal(true);
-  };
-
-  const openEditModal = (item: MenuRow) => {
-    setEditingItem(item);
-    setForm({
-      name: item.name,
-      categoryId: item.categoryId,
-      price: item.price
-    });
-    setOpenModal(true);
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    void handleSaveItem();
+  };
 
-    if (!form.name.trim() || form.price <= 0) {
-      setError("Tên món và giá tiền phải hợp lệ.");
+  const resetCategoryForm = () => {
+    setEditingCategoryId(null);
+    setCategoryName("");
+    setCategoryError(null);
+  };
+
+  const handleSaveCategory = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!categoryName.trim()) {
+      setCategoryError("Vui lòng nhập tên danh mục.");
       return;
     }
-
     try {
-      if (editingItem) {
-        await updateExistingMenuItem(editingItem.id, {
-          name: form.name.trim(),
-          price: Number(form.price)
-        });
+      setCategoryError(null);
+      if (editingCategoryId) {
+        await updateMenuCategory(editingCategoryId, { name: categoryName.trim() });
       } else {
-        if (!form.categoryId.trim()) {
-          setError("Category ID là bắt buộc khi thêm mới.");
-          return;
-        }
-
-        await createNewMenuItem({
-          name: form.name.trim(),
-          categoryId: form.categoryId.trim(),
-          price: Number(form.price)
-        });
+        await createMenuCategory({ name: categoryName.trim() });
       }
-
-      setOpenModal(false);
-      await loadMenu();
+      resetCategoryForm();
+      await reloadMenuData();
     } catch {
-      setError("Không lưu được món.");
+      setCategoryError("Lưu danh mục thất bại.");
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
+    const ok = await confirm({
+      title: "Xóa danh mục",
+      message: "Xóa danh mục này? Những món thuộc danh mục sẽ bị mất liên kết.",
+      confirmText: "Xóa",
+      tone: "danger"
+    });
+    if (!ok) return;
     try {
-      await deleteExistingMenuItem(id);
-      await loadMenu();
+      setCategoryError(null);
+      await deleteMenuCategory(id);
+      if (editingCategoryId === id) resetCategoryForm();
+      await reloadMenuData();
     } catch {
-      setError("Xóa món thất bại.");
+      setCategoryError("Xóa danh mục thất bại.");
     }
   };
-
-  const handleToggleStatus = (id: string) => {
-    setMenuItems((previous) =>
-      previous.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              active: !item.active
-            }
-          : item
-      )
-    );
-  };
-
-  const columns: DataColumn<MenuRow>[] = [
-    { key: "name", header: "Item", render: (row) => row.name },
-    { key: "category", header: "Category", render: (row) => row.category },
-    { key: "price", header: "Price", render: (row) => formatCurrency(row.price) },
-    {
-      key: "status",
-      header: "Status",
-      render: (row) => (
-        <button
-          className={row.active ? "menu-status-active" : "menu-status-inactive"}
-          onClick={() => handleToggleStatus(row.id)}
-          type="button"
-        >
-          {row.active ? "Active" : "Inactive"}
-        </button>
-      )
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (row) => (
-        <div className="module-row-actions">
-          <AppButton variant="secondary" onClick={() => openEditModal(row)}>
-            Edit
-          </AppButton>
-          <AppButton variant="danger" onClick={() => void handleDelete(row.id)}>
-            Delete
-          </AppButton>
-        </div>
-      )
-    }
-  ];
 
   return (
     <div className="module-page menu-page">
       <div className="module-header">
         <div>
-          <h2 className="module-title">Menu Management</h2>
-          <p className="module-breadcrumb">Dashboard / Menu</p>
+          <h2 className="module-title">Quản lý thực đơn</h2>
+          <p className="module-breadcrumb">Bảng điều khiển / Thực đơn</p>
         </div>
-        <AppButton onClick={openCreateModal}>Add Menu Item</AppButton>
       </div>
 
       {error ? <p className="alert-error">{error}</p> : null}
 
-      <section className="module-card">
-        <div className="module-toolbar">
+      <section className="module-card menu-card-shell">
+        <div className="module-toolbar menu-toolbar-like-image">
           <input
             className="module-search"
-            placeholder="Search item name/category"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            placeholder="Tìm kiếm theo tên món hoặc danh mục..."
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
           />
-          <AppButton variant="ghost" onClick={() => void loadMenu()} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
+
+          <select
+            className="menu-category-filter"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+          >
+            <option value="all">Tất cả danh mục</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
+          <AppButton variant="secondary" onClick={() => { resetCategoryForm(); setOpenCategoryModal(true); }}>
+            Quản lý danh mục
           </AppButton>
+          <AppButton onClick={openCreateModal}>+ Thêm món mới</AppButton>
         </div>
 
-        <DataTable
-          columns={columns}
-          rows={pagedRows}
-          rowKey={(row) => row.id}
-          emptyText="No menu item found."
-        />
+        {loading ? <p className="menu-loading">Đang tải dữ liệu...</p> : null}
 
-        <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
-          <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
+        {!loading && items.length === 0 ? (
+          <div className="menu-empty-state">
+            <p className="menu-empty-icon">☕</p>
+            <p className="menu-empty-title">Không có món phù hợp</p>
           </div>
+        ) : null}
+
+        <div className="menu-grid">
+          {items.map((item) => (
+            <article key={item.id} className="menu-item-card">
+              <div className="menu-item-image-wrap">
+                {item.imgUrl ? (
+                  <img className="menu-item-image" src={resolveImageUrl(item.imgUrl)} alt={item.name} />
+                ) : (
+                  <div className="menu-item-image menu-item-image-placeholder">Không có ảnh</div>
+                )}
+                <span className="menu-item-category-badge">{item.categoryName}</span>
+              </div>
+
+              <div className="menu-item-body">
+                <h3 className="menu-item-name">{item.name}</h3>
+                <p className="menu-item-price">{formatCurrency(item.price)}</p>
+              </div>
+
+              <div className="menu-item-actions">
+                <AppButton variant="secondary" onClick={() => openEditModal(item)}>
+                  Sửa
+                </AppButton>
+                <AppButton variant="danger" onClick={() => void handleDeleteItem(item.id)}>
+                  Xóa
+                </AppButton>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
       <AppModal
         open={openModal}
-        title={editingItem ? "Edit Menu Item" : "Create Menu Item"}
+        title={editingItem ? "Cập nhật món" : "Thêm món mới"}
         onClose={() => setOpenModal(false)}
       >
         <form className="form-grid" onSubmit={handleSubmit}>
           <label className="form-field">
-            <span>Name</span>
+            <span>Tên món</span>
             <input
               value={form.name}
               onChange={(event) =>
                 setForm((previous) => ({ ...previous, name: event.target.value }))
               }
+              placeholder="VD: Cà phê sữa đá"
               required
             />
           </label>
+
           <label className="form-field">
-            <span>Price</span>
+            <span>Giá bán (VNĐ)</span>
             <input
               type="number"
               min={1000}
               value={form.price}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, price: Number(event.target.value) }))
+                setForm((previous) => ({ ...previous, price: event.target.value }))
               }
+              placeholder="VD: 35000"
               required
             />
           </label>
 
-          {!editingItem ? (
-            <label className="form-field form-field-span">
-              <span>Category ID</span>
+          <label className="form-field form-field-span">
+            <span>Danh mục</span>
+            <select
+              value={form.categoryId}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, categoryId: event.target.value }))
+              }
+              required
+            >
+              <option value="">-- Chọn danh mục --</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="form-field form-field-span">
+            <label className="form-field">
+              <span>Chọn ảnh từ máy</span>
               <input
-                value={form.categoryId}
-                onChange={(event) =>
-                  setForm((previous) => ({ ...previous, categoryId: event.target.value }))
-                }
-                required
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setImageFile(file);
+                  setForm((p) => ({ ...p, imgUrl: "" }));
+                }}
               />
             </label>
-          ) : null}
+            {(imageFile ?? null) !== null ? (
+              <div className="menu-modal-preview">
+                <img
+                  src={URL.createObjectURL(imageFile!)}
+                  alt="Xem trước"
+                  className="menu-modal-preview-img"
+                />
+              </div>
+            ) : form.imgUrl.trim() ? (
+              <div className="menu-modal-preview">
+                <img
+                  src={resolveImageUrl(form.imgUrl)}
+                  alt="Xem trước"
+                  className="menu-modal-preview-img"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
+                />
+              </div>
+            ) : null}
+          </div>
 
           <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Save</AppButton>
+            <AppButton type="submit" disabled={uploading}>
+              {uploading ? "Đang upload..." : "Lưu"}
+            </AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setOpenModal(false)}>
-              Cancel
+              Hủy
             </AppButton>
           </div>
         </form>
+      </AppModal>
+
+      <AppModal
+        open={openCategoryModal}
+        title="Quản lý danh mục"
+        onClose={() => { setOpenCategoryModal(false); resetCategoryForm(); }}
+      >
+        {categoryError ? <p className="alert-error">{categoryError}</p> : null}
+
+        <form className="form-grid" onSubmit={handleSaveCategory}>
+          <label className="form-field form-field-span">
+            <span>{editingCategoryId ? "Sửa danh mục" : "Thêm danh mục mới"}</span>
+            <input
+              value={categoryName}
+              onChange={(event) => setCategoryName(event.target.value)}
+              placeholder="VD: Cà phê, Trà, Nước ép..."
+              required
+            />
+          </label>
+          <div className="module-row-actions form-field-span">
+            <AppButton type="submit">{editingCategoryId ? "Cập nhật" : "Thêm"}</AppButton>
+            {editingCategoryId ? (
+              <AppButton type="button" variant="ghost" onClick={resetCategoryForm}>
+                Hủy sửa
+              </AppButton>
+            ) : null}
+          </div>
+        </form>
+
+        <div style={{ marginTop: 16 }}>
+          <h4 className="panel-title" style={{ marginBottom: 8 }}>Danh sách danh mục</h4>
+          {categories.length === 0 ? (
+            <p style={{ color: "#888" }}>Chưa có danh mục nào.</p>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              {categories.map((category) => (
+                <li
+                  key={category.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    background: "#f8f9fa",
+                    borderRadius: 8
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{category.name}</span>
+                  <div className="module-row-actions">
+                    <AppButton
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingCategoryId(category.id);
+                        setCategoryName(category.name);
+                        setCategoryError(null);
+                      }}
+                    >
+                      Sửa
+                    </AppButton>
+                    <AppButton variant="danger" onClick={() => void handleDeleteCategory(category.id)}>
+                      Xóa
+                    </AppButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </AppModal>
     </div>
   );

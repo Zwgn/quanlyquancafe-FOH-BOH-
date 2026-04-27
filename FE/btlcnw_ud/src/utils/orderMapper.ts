@@ -32,10 +32,12 @@ export const mapOrder = (input: unknown, index: number): OrderListItem => {
   return {
     id: String(row.id ?? row.Id ?? row.orderId ?? row.OrderId ?? index),
     tableId: String(row.tableId ?? row.TableId ?? "-"),
+    tableName: String(row.tableName ?? row.TableName ?? ""),
     employeeId: String(row.employeeId ?? row.EmployeeId ?? "-"),
+    employeeName: String(row.employeeName ?? row.EmployeeName ?? ""),
     status: String(row.status ?? row.Status ?? "Pending"),
     createdAt: normalizeDate(row.createdAt ?? row.CreatedAt),
-    totalAmount: 0
+    totalAmount: normalizeNumber(row.totalAmount ?? row.TotalAmount ?? 0)
   };
 };
 
@@ -68,7 +70,7 @@ export const mergePaymentIntoOrders = (
 
     return {
       ...order,
-      totalAmount: payment.amount,
+      totalAmount: order.totalAmount > 0 ? order.totalAmount : payment.amount,
       paidAt: payment.paidAt
     };
   });

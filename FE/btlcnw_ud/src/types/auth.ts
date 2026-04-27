@@ -5,6 +5,7 @@ export interface LoginPayload {
 
 export interface AuthUser {
   id: string;
+  employeeId?: string;
   username: string;
   role: string;
   displayName?: string;

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { getPool } = require('./config/db');
 const setupRoutes = require('./routes');
 const errorHandler = require('./middlewares/errorHandler');
@@ -30,6 +31,9 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
 setupRoutes(app);

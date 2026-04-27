@@ -20,32 +20,29 @@ const login = async (req, res) => {
     const usernameValue = user.Username || user.username;
     const roleValue = user.Role || user.role;
 
-    // Generate JWT token
+    // Tạo JWT token
     const token = generateToken({
       id: userId,
       username: usernameValue,
       role: roleValue
     });
 
-    let displayName =
-      user.Name ||
-      user.name ||
-      user.FullName ||
-      user.fullName ||
-      user.DisplayName ||
-      user.displayName ||
-      null;
+    const employee = userId
+      ? await authService.getEmployeeByUserId(userId)
+      : null;
 
-    if (!displayName && userId) {
-      displayName = await authService.getDisplayNameByUserId(userId);
-    }
+    const employeeId = employee?.EmployeeId || employee?.employeeId || null;
+    const employeeName =
+      user.EmployeeName || user.employeeName ||
+      employee?.Name || employee?.name || null;
 
-    displayName = displayName || usernameValue;
+    const displayName = employeeName || usernameValue;
 
-    // Return user data with token
+    // Trả về thông tin người dùng và token
     return success(res, {
       user: {
         id: userId,
+        employeeId,
         username: usernameValue,
         role: roleValue,
         displayName,
@@ -54,19 +51,21 @@ const login = async (req, res) => {
       token
     }, 'Đăng nhập thành công');
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Lỗi khi đăng nhập:', err);
     return error(res, 'Đăng nhập thất bại', 500);
   }
 };
 
 const me = async (req, res) => {
   try {
-    let displayName = await authService.getDisplayNameByUserId(req.user.id);
-    displayName = displayName || req.user.username;
+    const employee = await authService.getEmployeeByUserId(req.user.id);
+    const employeeId = employee?.EmployeeId || employee?.employeeId || null;
+    let displayName = employee?.Name || employee?.name || req.user.username;
 
-    // User info is attached by authMiddleware
+    // Thông tin người dùng được gắn bởi authMiddleware
     return success(res, {
       id: req.user.id,
+      employeeId,
       username: req.user.username,
       role: req.user.role,
       displayName,

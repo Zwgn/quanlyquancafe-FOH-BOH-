@@ -12,9 +12,13 @@ const getAll = async (req, res) => {
 };
 
 const checkout = async (req, res) => {
+  const { orderId } = req.params;
+  const { paymentMethod } = req.body;
+
   try {
-    const { orderId } = req.params;
-    const { paymentMethod } = req.body;
+    if (!orderId) {
+      return error(res, 'Mã đơn hàng là bắt buộc.', 400);
+    }
 
     if (!paymentMethod) {
       return error(res, 'Phương thức thanh toán là bắt buộc.', 400);
@@ -23,8 +27,8 @@ const checkout = async (req, res) => {
     const result = await paymentService.checkout(orderId, paymentMethod);
     return success(res, result, 'Thanh toán hoàn tất thành công.', 201);
   } catch (err) {
-    console.error('Lỗi khi thanh toán:', err);
-    return error(res, 'Không thể hoàn tất thanh toán.', 500);
+    console.error('Lỗi khi thanh toán đơn', orderId, ':', err.message || err);
+    return error(res, err.message || 'Không thể hoàn tất thanh toán.', 500);
   }
 };
 

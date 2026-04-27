@@ -1,1 +1,9 @@
 @import "./module-page.css";
+
+.inventory-page .module-row-actions {
+  gap: 6px;
+}
+
+.inventory-page .module-row-actions .ui-button {
+  min-width: 60px;
+}

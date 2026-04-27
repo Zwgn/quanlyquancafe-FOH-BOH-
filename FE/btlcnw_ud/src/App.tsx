@@ -2,14 +2,20 @@ import { ReactElement } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import { AppProvider } from "./context/AppContext";
+import { ConfirmProvider } from "./components/ui/ConfirmDialog";
 import DashboardPage from "./pages/DashboardPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import InventoryPage from "./pages/InventoryPage";
 import LoginPage from "./pages/LoginPage";
 import MenuPage from "./pages/MenuPage";
 import OrdersPage from "./pages/OrdersPage";
+import PaymentsPage from "./pages/PaymentsPage";
+import ProfilePage from "./pages/ProfilePage";
+import RecipesPage from "./pages/RecipesPage";
 import ReportsPage from "./pages/ReportsPage";
+import SuppliersPage from "./pages/SuppliersPage";
 import TablesPage from "./pages/TablesPage";
+import UsersPage from "./pages/UsersPage";
 import "./assets/styles/app.css";
 
 const hasAuthenticatedUser = (): boolean => {
@@ -78,6 +84,7 @@ const RequireRole = ({
 function App() {
   return (
     <AppProvider>
+      <ConfirmProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -104,7 +111,7 @@ function App() {
             <Route
               path="/inventory"
               element={
-                <RequireRole allowedRoles={["Admin"]}>
+                <RequireRole allowedRoles={["Quản lý"]}>
                   <InventoryPage />
                 </RequireRole>
               }
@@ -112,12 +119,38 @@ function App() {
             <Route
               path="/employees"
               element={
-                <RequireRole allowedRoles={["Admin"]}>
+                <RequireRole allowedRoles={["Quản lý"]}>
                   <EmployeesPage />
                 </RequireRole>
               }
             />
+            <Route
+              path="/users"
+              element={
+                <RequireRole allowedRoles={["Quản lý"]}>
+                  <UsersPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/suppliers"
+              element={
+                <RequireRole allowedRoles={["Quản lý"]}>
+                  <SuppliersPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/recipes"
+              element={
+                <RequireRole allowedRoles={["Quản lý"]}>
+                  <RecipesPage />
+                </RequireRole>
+              }
+            />
+            <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
           <Route
             path="*"
@@ -130,6 +163,7 @@ function App() {
           />
         </Routes>
       </BrowserRouter>
+      </ConfirmProvider>
     </AppProvider>
   );
 }

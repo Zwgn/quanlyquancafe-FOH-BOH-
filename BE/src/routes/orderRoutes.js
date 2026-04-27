@@ -11,6 +11,7 @@ router.use(authMiddleware);
 // Order routes
 router.get('/', orderController.getAll);
 router.get('/:id', orderController.getById);
+router.get('/:id/detail', orderController.getDetail);
 router.post('/', orderController.create);
 router.patch('/:id/status', orderController.updateStatus);
 router.delete('/:id', orderController.remove);

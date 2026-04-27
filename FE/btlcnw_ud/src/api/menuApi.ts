@@ -21,3 +21,14 @@ export const updateMenuItem = async (
 export const deleteMenuItem = async (id: string) => {
   return axiosClient.delete<ApiResponse<unknown>>(`/menu-items/${id}`);
 };
+
+export const uploadMenuImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("image", file);
+  const response = await axiosClient.post<ApiResponse<{ url: string }>>(
+    "/upload",
+    formData,
+    { headers: { "Content-Type": undefined } }
+  );
+  return response.data.data?.url ?? "";
+};

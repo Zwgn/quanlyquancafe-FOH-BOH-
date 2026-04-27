@@ -7,7 +7,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import "../assets/styles/tables.css";
 
 const TablesPage = () => {
-	usePageTitle("Bàn | DungCafe Quản trị");
+	usePageTitle("Bàn | Coffee Management System");
 	const {
 		rows,
 		tableStats,
@@ -20,6 +20,9 @@ const TablesPage = () => {
 		totalPages,
 		openModal,
 		setOpenModal,
+		openDetailModal,
+		setOpenDetailModal,
+		detailRow,
 		editingRow,
 		form,
 		setForm,
@@ -28,6 +31,9 @@ const TablesPage = () => {
 		loadTables,
 		openCreateModal,
 		openEditModal,
+		openTableDetail,
+		openEditFromDetail,
+		getStatusLabel,
 		handleSaveTable,
 		handleStatusChange,
 		statusOptions
@@ -130,52 +136,34 @@ const TablesPage = () => {
 					<AppButton onClick={openCreateModal}>+ Thêm bàn</AppButton>
 				</div>
 
-				<div className="tables-table-wrap">
-					<table className="tables-table">
-						<thead>
-							<tr>
-								<th>Bàn</th>
-								<th>Sức chứa</th>
-								<th>Trạng thái</th>
-								<th>Hành động</th>
-							</tr>
-						</thead>
-
-						<tbody>
-							{rows.length === 0 ? (
-								<tr>
-									<td className="tables-empty" colSpan={4}>
-										{loading ? "Đang tải dữ liệu..." : "Không tìm thấy bàn phù hợp."}
-									</td>
-								</tr>
-							) : (
-								rows.map((row) => (
-									<tr key={row.id}>
-										<td className="tables-name">{row.name}</td>
-										<td>{row.capacity}</td>
-										<td>
-											<select
-												value={row.status}
-												onChange={(event) => void handleStatusChange(row.id, event.target.value)}
-											>
-												{statusOptions.map((option) => (
-													<option key={option.value} value={option.value}>
-														{option.label}
-													</option>
-												))}
-											</select>
-										</td>
-										<td>
-											<AppButton variant="secondary" onClick={() => openEditModal(row)}>
-												Sửa
-											</AppButton>
-										</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
+				{loading ? (
+					<p className="tables-empty">Đang tải dữ liệu...</p>
+				) : rows.length === 0 ? (
+					<p className="tables-empty">Không tìm thấy bàn phù hợp.</p>
+				) : (
+					<div className="tables-grid">
+						{rows.map((row) => (
+							<article
+								key={row.id}
+								className={`tables-card tables-card-${row.status.toLowerCase()}`}
+								onClick={() => openTableDetail(row)}
+							>
+								<div className="tables-card-header">
+									<h4 className="tables-card-name">{row.name}</h4>
+									<span className={`tables-badge tables-badge-${row.status.toLowerCase()}`}>
+										{getStatusLabel(row.status)}
+									</span>
+								</div>
+								<div className="tables-card-body">
+									<span className="tables-card-capacity">
+										{React.createElement(FiUsers as any, { size: 14 })}
+										{row.capacity} chỗ
+									</span>
+								</div>
+							</article>
+						))}
+					</div>
+				)}
 
 				<div className="module-pagination">
 					<span>
@@ -201,6 +189,56 @@ const TablesPage = () => {
 			</section>
 
 			<AppModal
+				open={openDetailModal}
+				title={detailRow ? detailRow.name : "Chi tiết bàn"}
+				onClose={() => setOpenDetailModal(false)}
+			>
+				{detailRow ? (
+					<div className="tables-detail-panel">
+						<div className="tables-detail-info">
+							<div className="tables-detail-info-item">
+								<span className="tables-detail-label">TÊN BÀN</span>
+								<span className="tables-detail-value">{detailRow.name}</span>
+							</div>
+							<div className="tables-detail-info-item">
+								<span className="tables-detail-label">SỨC CHỨA</span>
+								<span className="tables-detail-value">{detailRow.capacity} chỗ ngồi</span>
+							</div>
+							<div className="tables-detail-info-item">
+								<span className="tables-detail-label">TRẠNG THÁI</span>
+								<span className={`tables-badge tables-badge-${detailRow.status.toLowerCase()}`}>
+									{getStatusLabel(detailRow.status)}
+								</span>
+							</div>
+						</div>
+
+						<div className="tables-detail-status-section">
+							<span className="tables-detail-label">ĐỔI TRẠNG THÁI</span>
+							<select
+								value={detailRow.status}
+								onChange={(event) => void handleStatusChange(detailRow.id, event.target.value)}
+							>
+								{statusOptions.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
+						</div>
+
+						<div className="tables-detail-actions">
+							<AppButton variant="secondary" onClick={openEditFromDetail}>
+								Sửa thông tin
+							</AppButton>
+							<AppButton variant="ghost" onClick={() => setOpenDetailModal(false)}>
+								Đóng
+							</AppButton>
+						</div>
+					</div>
+				) : null}
+			</AppModal>
+
+			<AppModal
 				open={openModal}
 				title={editingRow ? "Sửa bàn" : "Thêm bàn mới"}
 				onClose={() => setOpenModal(false)}
@@ -213,12 +251,13 @@ const TablesPage = () => {
 							onChange={(event) =>
 								setForm((previous) => ({ ...previous, name: event.target.value }))
 							}
+							placeholder="VD: Bàn 1, Bàn VIP..."
 							required
 						/>
 					</label>
 
 					<label className="form-field">
-						<span>Sức chứa</span>
+						<span>Sức chứa (người)</span>
 						<input
 							type="number"
 							min={1}
@@ -226,6 +265,7 @@ const TablesPage = () => {
 							onChange={(event) =>
 								setForm((previous) => ({ ...previous, capacity: Number(event.target.value) }))
 							}
+							placeholder="VD: 4"
 							required
 						/>
 					</label>

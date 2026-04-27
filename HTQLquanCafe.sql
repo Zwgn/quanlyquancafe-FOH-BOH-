@@ -56,6 +56,7 @@ CREATE TABLE MenuItems (
 	ImageUrl NVARCHAR(255),
     FOREIGN KEY (CategoryId) REFERENCES MenuCategories(Id)
 );
+select * from MenuItems
 --Table Suppliers/Nhà cung cấp
 CREATE TABLE Suppliers (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -74,7 +75,7 @@ CREATE TABLE Ingredients (
 
     FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
 );
-
+select * from Ingredients
 --MenuItemIngredients(Receipt)/Công thức món
 CREATE TABLE MenuItemIngredients (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -140,8 +141,8 @@ CREATE INDEX IX_MenuItems_CategoryId ON MenuItems(CategoryId);
 CREATE INDEX IX_Ingredients_SupplierId ON Ingredients(SupplierId);
 
 INSERT INTO Roles(Name) VALUES 
-(N'Admin'),
-(N'Staff');
+(N'Quản lý'),
+(N'Nhân viên');
 SELECT * FROM ROLES
 
 INSERT INTO Users (Username, Password, RoleId) VALUES
@@ -215,7 +216,6 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 ('44444444-1111-1111-1111-111111111114','55555555-1111-1111-1111-111111111114',100),
 ('44444444-1111-1111-1111-111111111115','55555555-1111-1111-1111-111111111115',10);
 
-
 --Stored Procedures
 --------Login
 		CREATE PROCEDURE sp_Login
@@ -226,9 +226,11 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SELECT 
 				u.Id,
 				u.Username,
-				r.Name AS Role
+				r.Name AS Role,
+				e.Name AS EmployeeName
 			FROM Users u
 			JOIN Roles r ON u.RoleId = r.Id
+			LEFT JOIN Employees e ON e.UserId = u.Id
 			WHERE u.Username = @Username
 			  AND u.Password = @Password
 		END
@@ -259,9 +261,13 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SELECT 
 				u.Id,
 				u.Username,
-				r.Name Role
+				u.RoleId,
+				r.Name AS Role,
+				e.Name AS EmployeeName,
+				u.CreatedAt
 			FROM Users u
 			LEFT JOIN Roles r ON u.RoleId = r.Id
+			LEFT JOIN Employees e ON e.UserId = u.Id
 		END
 
 --------Get User By Id
@@ -287,15 +293,15 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		CREATE PROCEDURE sp_Users_Update
 			@Id UNIQUEIDENTIFIER,
 			@Username NVARCHAR(50),
-			@Password NVARCHAR(100),
+			@Password NVARCHAR(100) = NULL,
 			@RoleId UNIQUEIDENTIFIER
 		AS
 		BEGIN
 			UPDATE Users
-			SET Username=@Username,
-				Password=@Password,
-				RoleId=@RoleId
-			WHERE Id=@Id
+			SET Username = @Username,
+				Password = CASE WHEN @Password IS NULL OR LEN(@Password) = 0 THEN Password ELSE @Password END,
+				RoleId = @RoleId
+			WHERE Id = @Id
 		END
 
 --------Delete User
@@ -304,6 +310,23 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		AS
 		BEGIN
 			DELETE FROM Users WHERE Id=@Id
+		END
+
+--------Reset User Password
+		CREATE PROCEDURE sp_Users_ResetPassword
+			@Id UNIQUEIDENTIFIER,
+			@NewPassword NVARCHAR(100)
+		AS
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM Users WHERE Id = @Id)
+			BEGIN
+				RAISERROR(N'Người dùng không tồn tại.', 16, 1);
+				RETURN;
+			END
+
+			UPDATE Users
+			SET Password = @NewPassword
+			WHERE Id = @Id;
 		END
 
 -----Employees
@@ -339,7 +362,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 
 --------Create Employee
 		CREATE PROCEDURE sp_Employees_Create
-			@UserId UNIQUEIDENTIFIER,
+			@UserId UNIQUEIDENTIFIER = NULL,
 			@Name NVARCHAR(100),
 			@Phone NVARCHAR(20)
 		AS
@@ -419,6 +442,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SELECT 
 				m.Id,
 				m.Name,
+				m.CategoryId,
 				m.Price,
 				m.ImageUrl,
 				c.Name Category
@@ -450,6 +474,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		CREATE PROCEDURE sp_MenuItems_Update
 			@Id UNIQUEIDENTIFIER,
 			@Name NVARCHAR(100),
+			@CategoryId UNIQUEIDENTIFIER,
 			@Price DECIMAL(12,2),
 			@ImageUrl NVARCHAR(255)
 		AS
@@ -457,6 +482,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			UPDATE MenuItems
 			SET 
 				Name = @Name,
+				CategoryId = @CategoryId,
 				Price = @Price,
 				ImageUrl = @ImageUrl
 			WHERE Id = @Id
@@ -471,14 +497,29 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		END
 
 -----Orders
+
 --------Get Orders
 		CREATE PROCEDURE sp_Orders_GetAll
 		AS
 		BEGIN
-			SELECT * FROM Orders
+			SELECT 
+				o.Id,
+				o.TableId,
+				t.Name AS TableName,
+				o.EmployeeId,
+				e.Name AS EmployeeName,
+				o.Status,
+				o.CreatedAt,
+				ISNULL(SUM(oi.Quantity * oi.Price), 0) AS TotalAmount
+			FROM Orders o
+			LEFT JOIN Tables t ON o.TableId = t.Id
+			LEFT JOIN Employees e ON o.EmployeeId = e.Id
+			LEFT JOIN OrderItems oi ON o.Id = oi.OrderId
+			GROUP BY o.Id, o.TableId, t.Name, o.EmployeeId, e.Name, o.Status, o.CreatedAt
+			ORDER BY o.CreatedAt DESC
 		END
 
---------Get Order Detail
+--------Lấy chi tiết đơn hàng
 		CREATE PROCEDURE sp_Orders_GetById
 			@Id UNIQUEIDENTIFIER
 		AS
@@ -486,7 +527,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SELECT * FROM Orders WHERE Id=@Id
 		END
 
---------Create Order
+--------Tạo đơn hàng
 		CREATE PROCEDURE sp_Orders_Create
 			@TableId UNIQUEIDENTIFIER,
 			@EmployeeId UNIQUEIDENTIFIER
@@ -496,7 +537,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			VALUES(NEWID(),@TableId,@EmployeeId,'Open',GETDATE())
 		END
 
---------Update Order Status
+--------Cập nhật trạng thái đơn hàng
 		CREATE PROCEDURE sp_Orders_UpdateStatus
 			@Id UNIQUEIDENTIFIER,
 			@Status NVARCHAR(50)
@@ -507,7 +548,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			WHERE Id=@Id
 		END
 
---------Delete Order
+--------Xóa đơn hàng
 		CREATE PROCEDURE sp_Orders_Delete
 			@Id UNIQUEIDENTIFIER
 		AS
@@ -516,7 +557,37 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		END
 
 -----OrderItems
---------Add Item
+--------Lấy danh sách món trong đơn
+		CREATE PROCEDURE sp_Orders_GetDetail
+			@Id UNIQUEIDENTIFIER
+		AS
+		BEGIN	
+			SELECT 
+				o.Id,
+				t.Name AS TableName,
+				e.Name AS EmployeeName,
+				o.Status,
+				o.CreatedAt
+			FROM Orders o
+			LEFT JOIN Tables t ON o.TableId = t.Id
+			LEFT JOIN Employees e ON o.EmployeeId = e.Id
+			WHERE o.Id = @Id
+
+			-- Order items
+			SELECT 
+				m.Name,
+				m.ImageUrl,
+				oi.Quantity,
+				oi.Price,
+				oi.Status,
+				(oi.Quantity * oi.Price) AS Total
+			FROM OrderItems oi
+			JOIN MenuItems m ON oi.MenuItemId = m.Id
+			WHERE oi.OrderId = @Id
+		END
+
+
+--------Thêm món vào đơn
 		CREATE PROCEDURE sp_OrderItems_Add
 			@OrderId UNIQUEIDENTIFIER,
 			@MenuItemId UNIQUEIDENTIFIER,
@@ -526,7 +597,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 
 			DECLARE @Price DECIMAL(12,2)
 
-			-- Check stock
+			-- Kiểm tra tồn kho
 			IF EXISTS (
 				SELECT 1
 				FROM Ingredients i
@@ -536,7 +607,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 				AND i.StockQuantity < mi.Quantity * @Quantity
 			)
 			BEGIN
-				RAISERROR('Not enough ingredients',16,1)
+				RAISERROR(N'Không đủ nguyên liệu trong kho',16,1)
 				RETURN
 			END
 
@@ -589,6 +660,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SET Quantity=@Quantity
 			WHERE Id=@Id
 		END
+		GO
 
 --------Delete Item
 		CREATE PROCEDURE sp_OrderItems_Delete
@@ -597,6 +669,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		BEGIN
 			DELETE FROM OrderItems WHERE Id=@Id
 		END
+		GO
 
 --------Update Kitchen Status
 		CREATE PROCEDURE sp_OrderItems_UpdateStatus
@@ -608,6 +681,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 			SET Status=@Status
 			WHERE Id=@Id
 		END
+		GO
 
 -----Payment
 --------Get Payments
@@ -652,6 +726,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		WHERE Id=@OrderId
 
 		END
+		GO
 
 -----Inventory
 --------Import
@@ -676,6 +751,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		)
 
 		END
+		GO
 
 --------Export
 		CREATE PROCEDURE sp_Inventory_Export
@@ -699,9 +775,10 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		)
 
 		END
+		GO
 
 -----MenuCategories
---------Get All
+--------Lấy tất cả
 		CREATE PROCEDURE sp_MenuCategories_GetAll
 		AS
 		BEGIN
@@ -800,7 +877,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		GO
 
 -----Ingredients
---------Get All Ingredients
+--------Lấy tất cả nguyên liệu
 		CREATE PROCEDURE sp_Ingredients_GetAll
 		AS
 		BEGIN
@@ -865,7 +942,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		GO
 
 -----Suppliers
---------Get All
+--------Lấy tất cả
 		CREATE PROCEDURE sp_Suppliers_GetAll
 		AS
 		BEGIN
@@ -995,3 +1072,356 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 
 		END
 		GO
+
+-----Auto Table Status
+--------Sửa sp_Orders_Create: Tự động đặt bàn sang 'Occupied' khi tạo đơn
+		ALTER PROCEDURE sp_Orders_Create
+			@TableId UNIQUEIDENTIFIER,
+			@EmployeeId UNIQUEIDENTIFIER
+		AS
+		BEGIN
+			INSERT INTO Orders
+			VALUES(NEWID(), @TableId, @EmployeeId, 'Open', GETDATE())
+
+			UPDATE Tables
+			SET Status = 'Occupied'
+			WHERE Id = @TableId
+		END
+		GO
+
+--------Sửa sp_Payments_Checkout: Tự động đặt bàn về 'Available' khi thanh toán
+		ALTER PROCEDURE sp_Payments_Checkout
+			@OrderId UNIQUEIDENTIFIER,
+			@PaymentMethod NVARCHAR(50)
+		AS
+		BEGIN
+			DECLARE @Total DECIMAL(12,2)
+			DECLARE @TableId UNIQUEIDENTIFIER
+
+			SELECT @Total = SUM(Price * Quantity)
+			FROM OrderItems
+			WHERE OrderId = @OrderId
+
+			SELECT @TableId = TableId
+			FROM Orders
+			WHERE Id = @OrderId
+
+			INSERT INTO Payments
+			VALUES
+			(
+				NEWID(),
+				@OrderId,
+				@Total,
+				@PaymentMethod,
+				GETDATE()
+			)
+
+			UPDATE Orders
+			SET Status = 'Completed'
+			WHERE Id = @OrderId
+
+			IF @TableId IS NOT NULL
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM Orders
+					WHERE TableId = @TableId
+					  AND Id != @OrderId
+					  AND Status NOT IN ('Completed', 'Cancelled')
+				)
+				BEGIN
+					UPDATE Tables
+					SET Status = 'Available'
+					WHERE Id = @TableId
+				END
+			END
+		END
+		GO
+
+--------Sửa sp_Orders_Delete: Tự động đặt bàn về 'Available' khi xóa đơn
+		ALTER PROCEDURE sp_Orders_Delete
+			@Id UNIQUEIDENTIFIER
+		AS
+		BEGIN
+			DECLARE @TableId UNIQUEIDENTIFIER
+			DECLARE @OrderStatus NVARCHAR(50)
+
+			SELECT @TableId = TableId, @OrderStatus = Status
+			FROM Orders
+			WHERE Id = @Id
+
+			DELETE FROM OrderItems WHERE OrderId = @Id
+			DELETE FROM Payments WHERE OrderId = @Id
+			DELETE FROM Orders WHERE Id = @Id
+
+			IF @TableId IS NOT NULL AND @OrderStatus NOT IN ('Completed')
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM Orders
+					WHERE TableId = @TableId
+					  AND Status NOT IN ('Completed', 'Cancelled')
+				)
+				BEGIN
+					UPDATE Tables
+					SET Status = 'Available'
+					WHERE Id = @TableId
+				END
+			END
+		END
+		GO
+
+------================================================================
+------  MỞ RỘNG: Thêm các trường mới cho bảng Employees
+------================================================================
+
+-- Thêm cột mới vào bảng Employees
+ALTER TABLE Employees ADD
+	Gender   NVARCHAR(10)   NULL,
+	BirthDate DATE          NULL,
+	Role     NVARCHAR(50)   NULL,
+	Salary   DECIMAL(12,2)  NULL,
+	Address  NVARCHAR(255)  NULL;
+GO
+
+-- Cập nhật dữ liệu mẫu
+UPDATE Employees SET Gender = N'Nam', BirthDate = '2003-07-15', Role = N'Quản lý',  Salary = 15000000, Address = N'TP.HCM'  WHERE Name = N'Bùi Trí Dũng';
+UPDATE Employees SET Gender = N'Nam', BirthDate = '2002-03-20', Role = N'Pha chế',  Salary = 8000000,  Address = N'Hà Nội'  WHERE Name = N'Nguyễn Văn Đức';
+UPDATE Employees SET Gender = N'Nam', BirthDate = '2001-11-05', Role = N'Phục vụ',  Salary = 7000000,  Address = N'Đà Nẵng' WHERE Name = N'Nguyễn Đức Huy';
+GO
+
+-- Cập nhật SP lấy tất cả nhân viên (JOIN thêm thông tin User)
+ALTER PROCEDURE sp_Employees_GetAll
+AS
+BEGIN
+	SELECT 
+		e.Id,
+		e.UserId,
+		e.Name,
+		e.Phone,
+		e.Gender,
+		e.BirthDate,
+		e.Role,
+		e.Salary,
+		e.Address,
+		e.CreatedAt,
+		u.Username
+	FROM Employees e
+	LEFT JOIN Users u ON e.UserId = u.Id
+END
+GO
+
+-- Cập nhật SP tạo nhân viên
+ALTER PROCEDURE sp_Employees_Create
+	@UserId    UNIQUEIDENTIFIER,
+	@Name      NVARCHAR(100),
+	@Phone     NVARCHAR(20),
+	@Gender    NVARCHAR(10)  = NULL,
+	@BirthDate DATE          = NULL,
+	@Role      NVARCHAR(50)  = NULL,
+	@Salary    DECIMAL(12,2) = NULL,
+	@Address   NVARCHAR(255) = NULL
+AS
+BEGIN
+	INSERT INTO Employees (Id, UserId, Name, Phone, Gender, BirthDate, Role, Salary, Address, CreatedAt)
+	VALUES (NEWID(), @UserId, @Name, @Phone, @Gender, @BirthDate, @Role, @Salary, @Address, GETDATE())
+END
+GO
+
+-- Cập nhật SP sửa nhân viên
+ALTER PROCEDURE sp_Employees_Update
+	@Id        UNIQUEIDENTIFIER,
+	@Name      NVARCHAR(100),
+	@Phone     NVARCHAR(20),
+	@Gender    NVARCHAR(10)  = NULL,
+	@BirthDate DATE          = NULL,
+	@Role      NVARCHAR(50)  = NULL,
+	@Salary    DECIMAL(12,2) = NULL,
+	@Address   NVARCHAR(255) = NULL
+AS
+BEGIN
+	UPDATE Employees
+	SET Name      = @Name,
+		Phone     = @Phone,
+		Gender    = @Gender,
+		BirthDate = @BirthDate,
+		Role      = @Role,
+		Salary    = @Salary,
+		Address   = @Address
+	WHERE Id = @Id
+END
+GO
+
+------================================================================
+------  MỞ RỘNG: Cập nhật SP lấy danh sách đơn hàng (tính tổng tiền)
+------================================================================
+
+ALTER PROCEDURE sp_Orders_GetAll
+AS
+BEGIN
+	SELECT 
+		o.Id,
+		o.TableId,
+		t.Name AS TableName,
+		o.EmployeeId,
+		e.Name AS EmployeeName,
+		o.Status,
+		o.CreatedAt,
+		ISNULL(SUM(oi.Quantity * oi.Price), 0) AS TotalAmount
+	FROM Orders o
+	LEFT JOIN Tables t ON o.TableId = t.Id
+	LEFT JOIN Employees e ON o.EmployeeId = e.Id
+	LEFT JOIN OrderItems oi ON o.Id = oi.OrderId
+	GROUP BY o.Id, o.TableId, t.Name, o.EmployeeId, e.Name, o.Status, o.CreatedAt
+	ORDER BY o.CreatedAt DESC
+END
+GO
+
+------================================================================
+------  MỞ RỘNG: Cập nhật SP lấy lịch sử thanh toán (kèm thông tin đơn)
+------================================================================
+
+ALTER PROCEDURE sp_Payments_GetAll
+AS
+BEGIN
+	SELECT 
+		p.Id,
+		p.OrderId,
+		p.Amount,
+		p.PaymentMethod,
+		p.PaidAt,
+		t.Name AS TableName,
+		e.Name AS EmployeeName,
+		o.CreatedAt AS OrderCreatedAt
+	FROM Payments p
+	LEFT JOIN Orders o ON p.OrderId = o.Id
+	LEFT JOIN Tables t ON o.TableId = t.Id
+	LEFT JOIN Employees e ON o.EmployeeId = e.Id
+	ORDER BY p.PaidAt DESC
+END
+GO
+
+------================================================================
+------  SEED: Bổ sung nguyên liệu còn thiếu cho thực đơn thực tế
+------  (Idempotent: chỉ INSERT nếu chưa có theo Name)
+------================================================================
+
+DECLARE @SupCafe UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty cà phê Trung Nguyên');
+DECLARE @SupSua  UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Nhà cung cấp sữa Vinamilk');
+DECLARE @SupTC   UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty trái cây sạch');
+DECLARE @SupDuong UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty đường Biên Hòa');
+DECLARE @SupBanh UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty bánh ngọt ABC');
+
+-- Nguyên liệu cho cà phê / trà sữa / nước ép
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Sữa tươi')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Sữa tươi', N'ml', 5000, @SupSua);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Bột trà xanh')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột trà xanh', N'gram', 1000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Bột khoai môn')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột khoai môn', N'gram', 1000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Đường đen')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Đường đen', N'gram', 2000, @SupDuong);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Trân châu')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Trân châu', N'gram', 2500, @SupBanh);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Hồng trà')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Hồng trà', N'gram', 1500, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Cam tươi')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Cam tươi', N'gram', 5000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Dưa hấu')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Dưa hấu', N'gram', 8000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Thơm (dứa)')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Thơm (dứa)', N'gram', 3000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Cà rốt')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Cà rốt', N'gram', 3000, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Táo')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Táo', N'gram', 2500, @SupTC);
+IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Đá viên')
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Đá viên', N'gram', 20000, @SupSua);
+GO
+
+------================================================================
+------  SEED: Công thức món (MenuItemIngredients)
+------  Chỉ INSERT nếu chưa có (theo MenuItemId + IngredientId)
+------================================================================
+
+;WITH Recipes(MenuName, IngredientName, Quantity) AS (
+	SELECT * FROM (VALUES
+		-- ===== CÀ PHÊ =====
+		(N'Cà phê đen',           N'Cà phê hạt',  20.00),
+		(N'Cà phê đen',           N'Đường',       10.00),
+		(N'Cà phê đen',           N'Đá viên',    100.00),
+
+		(N'Cà phê sữa',           N'Cà phê hạt',  20.00),
+		(N'Cà phê sữa',           N'Sữa đặc',     30.00),
+		(N'Cà phê sữa',           N'Đá viên',    100.00),
+
+		(N'Bạc xỉu',              N'Cà phê hạt',  10.00),
+		(N'Bạc xỉu',              N'Sữa đặc',     40.00),
+		(N'Bạc xỉu',              N'Sữa tươi',    80.00),
+		(N'Bạc xỉu',              N'Đá viên',    100.00),
+
+		(N'Espresso',             N'Cà phê hạt',  18.00),
+		(N'Espresso',             N'Đường',        5.00),
+
+		(N'Cappuccino',           N'Cà phê hạt',  18.00),
+		(N'Cappuccino',           N'Sữa tươi',   120.00),
+		(N'Cappuccino',           N'Đường',        8.00),
+
+		-- ===== TRÀ SỮA =====
+		(N'Trà sữa truyền thống', N'Hồng trà',    10.00),
+		(N'Trà sữa truyền thống', N'Sữa đặc',     30.00),
+		(N'Trà sữa truyền thống', N'Đường',       15.00),
+		(N'Trà sữa truyền thống', N'Trân châu',   50.00),
+		(N'Trà sữa truyền thống', N'Đá viên',    100.00),
+
+		(N'Trà sữa matcha',       N'Bột trà xanh',12.00),
+		(N'Trà sữa matcha',       N'Sữa tươi',   150.00),
+		(N'Trà sữa matcha',       N'Đường',       15.00),
+		(N'Trà sữa matcha',       N'Trân châu',   50.00),
+
+		(N'Trà sữa khoai môn',    N'Bột khoai môn',15.00),
+		(N'Trà sữa khoai môn',    N'Sữa tươi',   150.00),
+		(N'Trà sữa khoai môn',    N'Đường',       15.00),
+		(N'Trà sữa khoai môn',    N'Trân châu',   50.00),
+
+		(N'Trà sữa đường đen',    N'Hồng trà',    10.00),
+		(N'Trà sữa đường đen',    N'Sữa tươi',   150.00),
+		(N'Trà sữa đường đen',    N'Đường đen',   25.00),
+		(N'Trà sữa đường đen',    N'Trân châu',   60.00),
+
+		(N'Trà sữa Thái',         N'Hồng trà',    12.00),
+		(N'Trà sữa Thái',         N'Sữa đặc',     30.00),
+		(N'Trà sữa Thái',         N'Đường',       18.00),
+		(N'Trà sữa Thái',         N'Đá viên',    100.00),
+
+		-- ===== NƯỚC ÉP =====
+		(N'Nước ép cam',          N'Cam tươi',   250.00),
+		(N'Nước ép cam',          N'Đường',       10.00),
+		(N'Nước ép cam',          N'Đá viên',     80.00),
+
+		(N'Nước ép dưa hấu',      N'Dưa hấu',    300.00),
+		(N'Nước ép dưa hấu',      N'Đường',        5.00),
+		(N'Nước ép dưa hấu',      N'Đá viên',     80.00),
+
+		(N'Nước ép thơm',         N'Thơm (dứa)', 250.00),
+		(N'Nước ép thơm',         N'Đường',       10.00),
+		(N'Nước ép thơm',         N'Đá viên',     80.00),
+
+		(N'Nước ép cà rốt',       N'Cà rốt',     200.00),
+		(N'Nước ép cà rốt',       N'Đường',        8.00),
+		(N'Nước ép cà rốt',       N'Đá viên',     80.00),
+
+		(N'Nước ép táo',          N'Táo',        220.00),
+		(N'Nước ép táo',          N'Đường',        8.00),
+		(N'Nước ép táo',          N'Đá viên',     80.00)
+	) AS V(MenuName, IngredientName, Quantity)
+)
+INSERT INTO MenuItemIngredients(Id, MenuItemId, IngredientId, Quantity)
+SELECT NEWID(), m.Id, i.Id, r.Quantity
+FROM Recipes r
+JOIN MenuItems m   ON m.Name = r.MenuName
+JOIN Ingredients i ON i.Name = r.IngredientName
+WHERE NOT EXISTS (
+	SELECT 1 FROM MenuItemIngredients mii
+	WHERE mii.MenuItemId = m.Id AND mii.IngredientId = i.Id
+);
+GO
+

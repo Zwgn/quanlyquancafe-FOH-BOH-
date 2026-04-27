@@ -29,13 +29,14 @@ const getById = async (req, res) => {
 
 const create = async (req, res) => {
   try {
-    const { name, categoryId, price } = req.body;
+    const { name, categoryId, price, imgUrl, imageUrl } = req.body;
+    const resolvedImageUrl = imgUrl ?? imageUrl ?? null;
 
     if (!name || !categoryId || !price) {
       return error(res, 'Tên, ID danh mục và giá là bắt buộc.', 400);
     }
 
-    const result = await menuItemService.create(name, categoryId, price);
+    const result = await menuItemService.create(name, categoryId, price, resolvedImageUrl);
     return success(res, result, 'Món ăn được tạo thành công.', 201);
   } catch (err) {
     console.error('Lỗi khi tạo món ăn:', err);
@@ -46,13 +47,14 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price } = req.body;
+    const { name, categoryId, price, imgUrl, imageUrl } = req.body;
+    const resolvedImageUrl = imgUrl ?? imageUrl ?? null;
 
-    if (!name || !price) {
-      return error(res, 'Tên và giá là bắt buộc.', 400);
+    if (!name || !categoryId || !price) {
+      return error(res, 'Tên, ID danh mục và giá là bắt buộc.', 400);
     }
 
-    const result = await menuItemService.update(id, name, price);
+    const result = await menuItemService.update(id, name, categoryId, price, resolvedImageUrl);
     return success(res, result, 'Món ăn được cập nhật thành công.');
   } catch (err) {
     console.error('Lỗi khi cập nhật món ăn:', err);

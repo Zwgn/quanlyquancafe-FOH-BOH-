@@ -3,6 +3,7 @@ import {
   checkoutOrder,
   createOrder,
   deleteOrder,
+  getOrderDetailById,
   getOrderById,
   getOrders,
   updateOrderStatus
@@ -12,6 +13,8 @@ import { OrderItemPayload, OrderPayload, OrderStatusPayload } from "../types/ord
 export const getOrdersList = async () => getOrders();
 
 export const getOrderDetail = async (orderId: string) => getOrderById(orderId);
+
+export const getOrderDetailView = async (orderId: string) => getOrderDetailById(orderId);
 
 export const createNewOrder = async (payload: OrderPayload) =>
   createOrder(payload);

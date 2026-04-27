@@ -14,7 +14,7 @@ const create = async (name, phone, address) => {
     .input('Phone', sql.NVarChar(20), phone)
     .input('Address', sql.NVarChar(255), address)
     .execute('sp_Suppliers_Create');
-  return { message: 'Supplier created successfully' };
+  return { message: 'Thêm nhà cung cấp thành công' };
 };
 
 const update = async (id, name, phone, address) => {
@@ -25,7 +25,7 @@ const update = async (id, name, phone, address) => {
     .input('Phone', sql.NVarChar(20), phone)
     .input('Address', sql.NVarChar(255), address)
     .execute('sp_Suppliers_Update');
-  return { message: 'Supplier updated successfully' };
+  return { message: 'Cập nhật nhà cung cấp thành công' };
 };
 
 const remove = async (id) => {
@@ -33,7 +33,7 @@ const remove = async (id) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .execute('sp_Suppliers_Delete');
-  return { message: 'Supplier deleted successfully' };
+  return { message: 'Xóa nhà cung cấp thành công' };
 };
 
 module.exports = {

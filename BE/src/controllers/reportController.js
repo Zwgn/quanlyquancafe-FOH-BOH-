@@ -31,7 +31,13 @@ const getBestSellingItems = async (req, res) => {
 const getLowStockIngredients = async (req, res) => {
   try {
     const { threshold = 100 } = req.query;
-    const ingredients = await reportService.getLowStockIngredients(parseFloat(threshold));
+    const parsedThreshold = Number(threshold);
+
+    if (!Number.isFinite(parsedThreshold) || parsedThreshold < 0) {
+      return error(res, 'Giá trị threshold không hợp lệ.', 400);
+    }
+
+    const ingredients = await reportService.getLowStockIngredients(parsedThreshold);
     return success(res, ingredients);
   } catch (err) {
     console.error('Lỗi khi lấy nguyên liệu sắp hết:', err);

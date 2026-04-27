@@ -1,173 +1,50 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  createNewIngredient,
-  deleteExistingIngredient,
-  exportIngredientStock,
-  getIngredientsList,
-  importIngredientStock
-} from "../services/ingredientsService";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
 import DataTable, { DataColumn } from "../components/ui/DataTable";
-import { Ingredient } from "../types/ingredient";
 import { usePageTitle } from "../hooks/usePageTitle";
+import useInventory, { IngredientRow } from "../hooks/useInventory";
 import "../assets/styles/inventory.css";
 
-interface IngredientRow extends Ingredient {
-  supplierId: string;
-}
-
-const PAGE_SIZE = 8;
-
-const mapIngredient = (input: unknown, index: number): IngredientRow => {
-  const row = (input ?? {}) as Record<string, unknown>;
-
-  return {
-    id: String(row.id ?? row.Id ?? row.ingredientId ?? row.IngredientId ?? index),
-    name: String(row.name ?? row.Name ?? ""),
-    unit: String(row.unit ?? row.Unit ?? ""),
-    quantity: Number(row.quantity ?? row.Quantity ?? row.stockQuantity ?? row.StockQuantity ?? 0),
-    supplierId: String(row.supplierId ?? row.SupplierId ?? "")
-  };
-};
-
 const InventoryPage = () => {
-  const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [stockOpen, setStockOpen] = useState(false);
-  const [stockMode, setStockMode] = useState<"import" | "export">("import");
-  const [selectedId, setSelectedId] = useState("");
-  const [createForm, setCreateForm] = useState({
-    name: "",
-    unit: "kg",
-    stockQuantity: 0,
-    supplierId: ""
-  });
-  const [stockForm, setStockForm] = useState({ quantity: 0 });
+  usePageTitle("Kho | Coffee Management System");
 
-  usePageTitle("Inventory | DungCafe Admin");
-
-  const loadIngredients = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getIngredientsList();
-      setIngredients(data.map(mapIngredient));
-    } catch {
-      setError("Không tải được dữ liệu kho.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadInventory = async () => {
-      await loadIngredients();
-    };
-
-    void loadInventory();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) {
-      return ingredients;
-    }
-
-    return ingredients.filter((item) =>
-      [item.name, item.unit, item.quantity].join(" ").toLowerCase().includes(keyword)
-    );
-  }, [ingredients, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!createForm.name.trim() || !createForm.supplierId.trim()) {
-      setError("Tên nguyên liệu và supplier ID là bắt buộc.");
-      return;
-    }
-
-    try {
-      await createNewIngredient({
-        name: createForm.name.trim(),
-        unit: createForm.unit.trim(),
-        stockQuantity: Number(createForm.stockQuantity),
-        supplierId: createForm.supplierId.trim()
-      });
-      setCreateOpen(false);
-      setCreateForm({ name: "", unit: "kg", stockQuantity: 0, supplierId: "" });
-      await loadIngredients();
-    } catch {
-      setError("Thêm nguyên liệu thất bại.");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteExistingIngredient(id);
-      await loadIngredients();
-    } catch {
-      setError("Xóa nguyên liệu thất bại.");
-    }
-  };
-
-  const openStockModal = (id: string, mode: "import" | "export") => {
-    setSelectedId(id);
-    setStockMode(mode);
-    setStockForm({ quantity: 0 });
-    setStockOpen(true);
-  };
-
-  const handleUpdateStock = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!selectedId || stockForm.quantity <= 0) {
-      setError("Số lượng phải lớn hơn 0.");
-      return;
-    }
-
-    try {
-      if (stockMode === "import") {
-        await importIngredientStock(selectedId, Number(stockForm.quantity));
-      } else {
-        await exportIngredientStock(selectedId, Number(stockForm.quantity));
-      }
-      setStockOpen(false);
-      await loadIngredients();
-    } catch {
-      setError("Cập nhật tồn kho thất bại.");
-    }
-  };
+  const {
+    ingredients: pagedRows,
+    suppliers, supplierMap,
+    search, setSearch,
+    page, setPage, currentPage, totalPages,
+    error, loading,
+    createOpen, setCreateOpen,
+    stockOpen, setStockOpen,
+    stockMode,
+    createForm, setCreateForm,
+    stockForm, setStockForm,
+    loadIngredients,
+    handleCreate, handleDelete, openStockModal, handleUpdateStock
+  } = useInventory();
 
   const columns: DataColumn<IngredientRow>[] = [
-    { key: "name", header: "Ingredient", render: (row) => row.name },
-    { key: "unit", header: "Unit", render: (row) => row.unit },
-    { key: "qty", header: "In Stock", render: (row) => String(row.quantity) },
+    { key: "name", header: "Nguyên liệu", render: (row) => row.name },
+    { key: "unit", header: "Đơn vị", render: (row) => row.unit },
+    { key: "qty", header: "Tồn kho", render: (row) => String(row.quantity) },
+    {
+      key: "supplier",
+      header: "Nhà cung cấp",
+      render: (row) => supplierMap[row.supplierId] || "-"
+    },
     {
       key: "actions",
-      header: "Actions",
+      header: "Hành động",
       render: (row) => (
         <div className="module-row-actions">
           <AppButton variant="secondary" onClick={() => openStockModal(row.id.toString(), "import")}>
-            Import
+            Nhập
           </AppButton>
           <AppButton variant="secondary" onClick={() => openStockModal(row.id.toString(), "export")}>
-            Export
+            Xuất
           </AppButton>
           <AppButton variant="danger" onClick={() => void handleDelete(row.id.toString())}>
-            Delete
+            Xóa
           </AppButton>
         </div>
       )
@@ -178,10 +55,10 @@ const InventoryPage = () => {
     <div className="module-page inventory-page">
       <div className="module-header">
         <div>
-          <h2 className="module-title">Inventory Management</h2>
-          <p className="module-breadcrumb">Dashboard / Inventory</p>
+          <h2 className="module-title">Quản lý kho</h2>
+          <p className="module-breadcrumb">Bảng điều khiển / Kho</p>
         </div>
-        <AppButton onClick={() => setCreateOpen(true)}>Add Ingredient</AppButton>
+        <AppButton onClick={() => setCreateOpen(true)}>Thêm nguyên liệu</AppButton>
       </div>
 
       {error ? <p className="alert-error">{error}</p> : null}
@@ -190,7 +67,7 @@ const InventoryPage = () => {
         <div className="module-toolbar">
           <input
             className="module-search"
-            placeholder="Search ingredient"
+            placeholder="Tìm kiếm nguyên liệu"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -198,7 +75,7 @@ const InventoryPage = () => {
             }}
           />
           <AppButton variant="ghost" onClick={() => void loadIngredients()} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
+            {loading ? "Đang tải..." : "Làm mới"}
           </AppButton>
         </div>
 
@@ -206,40 +83,26 @@ const InventoryPage = () => {
           columns={columns}
           rows={pagedRows}
           rowKey={(row) => row.id}
-          emptyText="No ingredients found."
+          emptyText="Không tìm thấy nguyên liệu."
         />
 
         <div className="module-pagination">
-          <span>
-            Page {currentPage}/{totalPages}
-          </span>
+          <span>Trang {currentPage}/{totalPages}</span>
           <div className="module-pagination-actions">
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
-              disabled={currentPage === 1}
-            >
-              Prev
-            </AppButton>
-            <AppButton
-              variant="secondary"
-              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>Trước</AppButton>
+            <AppButton variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Sau</AppButton>
           </div>
         </div>
       </section>
 
       <AppModal
         open={createOpen}
-        title="Create Ingredient"
+        title="Tạo nguyên liệu"
         onClose={() => setCreateOpen(false)}
       >
         <form className="form-grid" onSubmit={handleCreate}>
           <label className="form-field">
-            <span>Name</span>
+            <span>Tên nguyên liệu</span>
             <input
               value={createForm.name}
               onChange={(event) =>
@@ -249,7 +112,7 @@ const InventoryPage = () => {
             />
           </label>
           <label className="form-field">
-            <span>Unit</span>
+            <span>Đơn vị</span>
             <input
               value={createForm.unit}
               onChange={(event) =>
@@ -259,7 +122,7 @@ const InventoryPage = () => {
             />
           </label>
           <label className="form-field">
-            <span>Initial Stock</span>
+            <span>Số lượng tồn trong kho</span>
             <input
               type="number"
               min={0}
@@ -273,8 +136,8 @@ const InventoryPage = () => {
             />
           </label>
           <label className="form-field">
-            <span>Supplier ID</span>
-            <input
+            <span>Nhà cung cấp</span>
+            <select
               value={createForm.supplierId}
               onChange={(event) =>
                 setCreateForm((previous) => ({
@@ -283,13 +146,20 @@ const InventoryPage = () => {
                 }))
               }
               required
-            />
+            >
+              <option value="">-- Vui lòng chọn nhà cung cấp --</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Save</AppButton>
+            <AppButton type="submit">Lưu</AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
-              Cancel
+              Hủy
             </AppButton>
           </div>
         </form>
@@ -297,12 +167,12 @@ const InventoryPage = () => {
 
       <AppModal
         open={stockOpen}
-        title={stockMode === "import" ? "Import Inventory" : "Export Inventory"}
+        title={stockMode === "import" ? "Nhập kho" : "Xuất kho"}
         onClose={() => setStockOpen(false)}
       >
         <form className="form-grid" onSubmit={handleUpdateStock}>
           <label className="form-field form-field-span">
-            <span>Quantity</span>
+            <span>Số lượng</span>
             <input
               type="number"
               min={1}
@@ -314,9 +184,9 @@ const InventoryPage = () => {
             />
           </label>
           <div className="module-row-actions form-field-span">
-            <AppButton type="submit">Confirm</AppButton>
+            <AppButton type="submit">Xác nhận</AppButton>
             <AppButton type="button" variant="ghost" onClick={() => setStockOpen(false)}>
-              Cancel
+              Hủy
             </AppButton>
           </div>
         </form>

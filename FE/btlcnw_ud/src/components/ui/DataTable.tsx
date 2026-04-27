@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
+import { MdInbox } from "react-icons/md";
 import "../../assets/styles/ui-table.css";
 
 export interface DataColumn<T> {
@@ -18,7 +19,7 @@ const DataTable = <T,>({
   columns,
   rows,
   rowKey,
-  emptyText = "No data found."
+  emptyText = "Không có dữ liệu."
 }: DataTableProps<T>) => {
   return (
     <div className="ui-table-wrap">
@@ -34,7 +35,10 @@ const DataTable = <T,>({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="ui-table-empty">
-                {emptyText}
+                <div className="ui-table-empty-state">
+                  {React.createElement(MdInbox as any, { size: 44 })}
+                  <span>{emptyText}</span>
+                </div>
               </td>
             </tr>
           ) : (

@@ -3,63 +3,88 @@
 .reports-kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
+}
+
+.reports-kpi-card {
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.reports-kpi-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .reports-kpi-card p {
   margin: 0;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 13px;
+  font-weight: 500;
 }
 
 .reports-kpi-card h3 {
-  margin: 4px 0;
-  color: #0f172a;
-  font-size: 24px;
+  margin: 6px 0 4px;
+  color: var(--color-text-dark);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .reports-kpi-card small {
-  color: #94a3b8;
+  color: var(--color-text-placeholder);
+  font-size: 12px;
 }
 
 .reports-best-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .reports-best-item {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.reports-best-item:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .reports-best-item p {
   margin: 0;
-  color: #334155;
+  color: var(--color-text);
   font-weight: 600;
+  font-size: 14px;
 }
 
 .reports-best-item span {
-  color: #0f172a;
+  color: var(--color-text-dark);
   font-weight: 700;
+  font-size: 13px;
+  margin-top: 4px;
+  display: inline-block;
 }
 
 .reports-status-low,
 .reports-status-ok {
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-weight: 700;
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-weight: 600;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .reports-status-low {
-  background: #fee2e2;
+  background: var(--color-danger-bg);
   color: #991b1b;
 }
 
 .reports-status-ok {
-  background: #dcfce7;
+  background: var(--color-success-bg);
   color: #166534;
 }
 

@@ -15,7 +15,7 @@ const create = async (menuItemId, ingredientId, quantity) => {
     .input('IngredientId', sql.UniqueIdentifier, ingredientId)
     .input('Quantity', sql.Decimal(10, 2), quantity)
     .execute('sp_MenuItemIngredients_Create');
-  return { message: 'Recipe created successfully' };
+  return { message: 'Thêm nguyên liệu cho món ăn thành công' };
 };
 
 const update = async (id, quantity) => {
@@ -24,7 +24,7 @@ const update = async (id, quantity) => {
     .input('Id', sql.UniqueIdentifier, id)
     .input('Quantity', sql.Decimal(10, 2), quantity)
     .execute('sp_MenuItemIngredients_Update');
-  return { message: 'Recipe updated successfully' };
+  return { message: 'Cập nhật nguyên liệu cho món ăn thành công' };
 };
 
 const remove = async (id) => {
@@ -32,7 +32,7 @@ const remove = async (id) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .execute('sp_MenuItemIngredients_Delete');
-  return { message: 'Recipe deleted successfully' };
+  return { message: 'Xóa nguyên liệu cho món ăn thành công' };
 };
 
 module.exports = {

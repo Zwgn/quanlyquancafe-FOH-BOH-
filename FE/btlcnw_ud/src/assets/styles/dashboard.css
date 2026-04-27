@@ -2,12 +2,23 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .dashboard-page select {
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 7px 10px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.dashboard-page select:focus {
+  border-color: var(--color-blue);
+  box-shadow: var(--focus-ring);
 }

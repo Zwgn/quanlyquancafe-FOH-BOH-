@@ -2,7 +2,7 @@ const { getPool, sql } = require('../config/db');
 
 const getAll = async () => {
   const pool = await getPool();
-  const result = await pool.request()
+  const result = await pool.request() 
     .execute('sp_Ingredients_GetAll');
   return result.recordset;
 };
@@ -15,7 +15,7 @@ const create = async (name, unit, stockQuantity, supplierId) => {
     .input('StockQuantity', sql.Decimal(10, 2), stockQuantity)
     .input('SupplierId', sql.UniqueIdentifier, supplierId)
     .execute('sp_Ingredients_Create');
-  return { message: 'Ingredient created successfully' };
+  return { message: 'Thêm nguyên liệu thành công' };
 };
 
 const update = async (id, name, unit, stockQuantity, supplierId) => {
@@ -27,7 +27,7 @@ const update = async (id, name, unit, stockQuantity, supplierId) => {
     .input('StockQuantity', sql.Decimal(10, 2), stockQuantity)
     .input('SupplierId', sql.UniqueIdentifier, supplierId)
     .execute('sp_Ingredients_Update');
-  return { message: 'Ingredient updated successfully' };
+  return { message: 'Cập nhật nguyên liệu thành công' };
 };
 
 const remove = async (id) => {
@@ -35,7 +35,7 @@ const remove = async (id) => {
   await pool.request()
     .input('Id', sql.UniqueIdentifier, id)
     .execute('sp_Ingredients_Delete');
-  return { message: 'Ingredient deleted successfully' };
+  return { message: 'Xóa nguyên liệu thành công' };
 };
 
 module.exports = {
