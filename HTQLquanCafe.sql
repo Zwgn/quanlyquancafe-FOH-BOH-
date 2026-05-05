@@ -198,7 +198,10 @@ INSERT INTO Suppliers (Name, Phone, Address) VALUES
 (N'Nhà cung cấp sữa Vinamilk','0903334444',N'Hà Nội'),
 (N'Công ty trái cây sạch','0905556666',N'Đà Lạt'),
 (N'Công ty đường Biên Hòa','0907778888',N'Đồng Nai'),
-(N'Công ty bánh ngọt ABC','0909990000',N'TP.HCM');
+(N'Công ty bánh ngọt ABC','0909990000',N'TP.HCM'),
+(N'Công ty trà Phúc Long','0911223344',N'Thái Nguyên'),
+(N'Nhà cung cấp đá sạch Hòa Phát','0912345678',N'TP.HCM'),
+(N'Công ty bột nguyên liệu Tân Việt','0933445566',N'Bình Dương');
 SELECT * FROM SUPPLIERS
 
 INSERT INTO Ingredients (Name, Unit, StockQuantity, SupplierId) VALUES
@@ -336,7 +339,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 		BEGIN
 			SELECT * FROM Employees
 		END
---------Get Employees ByUserId
+	--------Get Employees ByUserId
 		CREATE PROCEDURE sp_Employees_GetByUserId
 	   @UserId UNIQUEIDENTIFIER
 		AS
@@ -345,6 +348,11 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 				e.Id AS EmployeeId,
 				e.Name,
 				e.Phone,
+				e.Gender,
+				e.BirthDate,
+				e.Role AS Position,
+				e.Salary,
+				e.Address,
 				e.CreatedAt,
 
 				u.Id AS UserId,
@@ -886,6 +894,7 @@ INSERT INTO MenuItemIngredients (MenuItemId, IngredientId, Quantity) VALUES
 				i.Name,
 				i.Unit,
 				i.StockQuantity,
+				i.SupplierId,
 				s.Name Supplier
 			FROM Ingredients i
 			LEFT JOIN Suppliers s
@@ -1304,25 +1313,28 @@ GO
 ------  (Idempotent: chỉ INSERT nếu chưa có theo Name)
 ------================================================================
 
-DECLARE @SupCafe UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty cà phê Trung Nguyên');
-DECLARE @SupSua  UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Nhà cung cấp sữa Vinamilk');
-DECLARE @SupTC   UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty trái cây sạch');
+DECLARE @SupCafe  UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty cà phê Trung Nguyên');
+DECLARE @SupSua   UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Nhà cung cấp sữa Vinamilk');
+DECLARE @SupTC    UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty trái cây sạch');
 DECLARE @SupDuong UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty đường Biên Hòa');
-DECLARE @SupBanh UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty bánh ngọt ABC');
+DECLARE @SupBanh  UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty bánh ngọt ABC');
+DECLARE @SupTra   UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty trà Phúc Long');
+DECLARE @SupDa    UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Nhà cung cấp đá sạch Hòa Phát');
+DECLARE @SupBot   UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM Suppliers WHERE Name = N'Công ty bột nguyên liệu Tân Việt');
 
 -- Nguyên liệu cho cà phê / trà sữa / nước ép
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Sữa tươi')
 	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Sữa tươi', N'ml', 5000, @SupSua);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Bột trà xanh')
-	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột trà xanh', N'gram', 1000, @SupTC);
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột trà xanh', N'gram', 1000, @SupBot);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Bột khoai môn')
-	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột khoai môn', N'gram', 1000, @SupTC);
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Bột khoai môn', N'gram', 1000, @SupBot);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Đường đen')
 	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Đường đen', N'gram', 2000, @SupDuong);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Trân châu')
 	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Trân châu', N'gram', 2500, @SupBanh);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Hồng trà')
-	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Hồng trà', N'gram', 1500, @SupTC);
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Hồng trà', N'gram', 1500, @SupTra);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Cam tươi')
 	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Cam tươi', N'gram', 5000, @SupTC);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Dưa hấu')
@@ -1334,7 +1346,14 @@ IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Cà rốt')
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Táo')
 	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Táo', N'gram', 2500, @SupTC);
 IF NOT EXISTS(SELECT 1 FROM Ingredients WHERE Name = N'Đá viên')
-	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Đá viên', N'gram', 20000, @SupSua);
+	INSERT INTO Ingredients(Name, Unit, StockQuantity, SupplierId) VALUES(N'Đá viên', N'gram', 20000, @SupDa);
+
+-- Cập nhật nguyên liệu đã có → gán đúng NCC mới
+UPDATE Ingredients SET SupplierId = @SupTra   WHERE Name = N'Hồng trà'      AND SupplierId <> @SupTra;
+UPDATE Ingredients SET SupplierId = @SupTra   WHERE Name = N'Trà đào'       AND SupplierId <> @SupTra;
+UPDATE Ingredients SET SupplierId = @SupBot   WHERE Name = N'Bột trà xanh'  AND SupplierId <> @SupBot;
+UPDATE Ingredients SET SupplierId = @SupBot   WHERE Name = N'Bột khoai môn' AND SupplierId <> @SupBot;
+UPDATE Ingredients SET SupplierId = @SupDa    WHERE Name = N'Đá viên'       AND SupplierId <> @SupDa;
 GO
 
 ------================================================================

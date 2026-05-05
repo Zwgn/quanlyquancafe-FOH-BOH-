@@ -30,7 +30,7 @@ const InventoryPage = () => {
     {
       key: "supplier",
       header: "Nhà cung cấp",
-      render: (row) => supplierMap[row.supplierId] || "-"
+      render: (row) => row.supplierName || supplierMap[row.supplierId] || "-"
     },
     {
       key: "actions",
@@ -97,7 +97,7 @@ const InventoryPage = () => {
 
       <AppModal
         open={createOpen}
-        title="Tạo nguyên liệu"
+        title="Thêm nguyên liệu"
         onClose={() => setCreateOpen(false)}
       >
         <form className="form-grid" onSubmit={handleCreate}>

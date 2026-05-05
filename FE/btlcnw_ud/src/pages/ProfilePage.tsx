@@ -2,22 +2,39 @@ import React from "react";
 import {
   MdAccountCircle,
   MdBadge,
+  MdCalendarMonth,
+  MdEdit,
+  MdHome,
   MdLock,
   MdMail,
   MdPerson,
+  MdPhone,
   MdSecurity,
   MdVisibility,
-  MdVisibilityOff
+  MdVisibilityOff,
+  MdWork,
+  MdAttachMoney
 } from "react-icons/md";
 import AppButton from "../components/ui/AppButton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import useProfile from "../hooks/useProfile";
+import { formatCurrency } from "../utils/formatCurrency";
+
+const formatDate = (v: string) => {
+  if (!v) return "-";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString("vi-VN");
+};
 
 const ProfilePage = () => {
   usePageTitle("Hồ sơ cá nhân | Coffee Management System");
 
   const {
     currentUser,
+    profile, profileForm, setProfileForm,
+    editingProfile, setEditingProfile,
+    profileLoading,
+    handleSaveProfile,
     oldPassword, setOldPassword,
     newPassword, setNewPassword,
     confirmPassword, setConfirmPassword,
@@ -76,68 +93,99 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16
-        }}
-      >
+      {error ? <p className="alert-error">{error}</p> : null}
+      {success ? (
+        <p style={{ color: "#16a34a", background: "#dcfce7", padding: "10px 12px", borderRadius: 8, margin: "0 0 12px" }}>
+          {success}
+        </p>
+      ) : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {/* ====== CỘT TRÁI: Thông tin cá nhân ====== */}
         <section className="module-card">
           <div style={{ textAlign: "center", paddingBottom: 16, borderBottom: "1px solid #eef0f3" }}>
             <div
               style={{
-                width: 96,
-                height: 96,
-                margin: "0 auto 12px",
-                borderRadius: "50%",
-                background: "#fdf6f0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#6f4e37"
+                width: 96, height: 96, margin: "0 auto 12px", borderRadius: "50%",
+                background: "#fdf6f0", display: "flex", alignItems: "center",
+                justifyContent: "center", color: "#6f4e37"
               }}
             >
               {React.createElement(MdAccountCircle as any, { size: 80 })}
             </div>
             <h3 style={{ margin: 0 }}>{currentUser.displayName}</h3>
-            <p style={{ margin: "4px 0 0", color: "#6c757d", fontSize: 14 }}>
-              {currentUser.role}
-            </p>
+            <p style={{ margin: "4px 0 0", color: "#6c757d", fontSize: 14 }}>{currentUser.role}</p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
-            <InfoRow icon={MdPerson as any} label="Họ và tên" value={currentUser.displayName} />
-            <InfoRow icon={MdMail as any} label="Tên đăng nhập" value={currentUser.username} />
-            <InfoRow icon={MdSecurity as any} label="Vai trò" value={currentUser.role} />
-            <InfoRow
-              icon={MdBadge as any}
-              label="Mã nhân viên"
-              value={currentUser.employeeId ?? "Chưa liên kết"}
-            />
-          </div>
+          {profileLoading ? (
+            <p style={{ textAlign: "center", color: "#6c757d", marginTop: 16 }}>Đang tải...</p>
+          ) : !editingProfile ? (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
+                <InfoRow icon={MdPerson} label="Họ tên" value={profile.name} />
+                <InfoRow icon={MdMail} label="Tên đăng nhập" value={currentUser.username} />
+                <InfoRow icon={MdPerson} label="Giới tính" value={profile.gender || "-"} />
+                <InfoRow icon={MdCalendarMonth} label="Ngày sinh" value={formatDate(profile.birthDate)} />
+                <InfoRow icon={MdWork} label="Chức vụ" value={profile.position || "-"} />
+                <InfoRow icon={MdAttachMoney} label="Lương" value={profile.salary != null ? formatCurrency(profile.salary) : "-"} />
+                <InfoRow icon={MdPhone} label="Số điện thoại" value={profile.phone || "-"} />
+                <InfoRow icon={MdHome} label="Địa chỉ" value={profile.address || "-"} />
+                <InfoRow icon={MdSecurity} label="Vai trò" value={currentUser.role} />
+                <InfoRow icon={MdBadge} label="Mã nhân viên" value={currentUser.employeeId ?? "Chưa liên kết"} />
+              </div>
+              {currentUser.employeeId ? (
+                <div style={{ marginTop: 16 }}>
+                  <AppButton onClick={() => { setProfileForm({ ...profile }); setEditingProfile(true); }}>
+                    {React.createElement(MdEdit as any, { size: 16, style: { marginRight: 6 } })}
+                    Chỉnh sửa thông tin
+                  </AppButton>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <form className="form-grid" onSubmit={handleSaveProfile} style={{ marginTop: 16 }}>
+              <label className="form-field form-field-span">
+                <span>Họ tên</span>
+                <input value={profileForm.name} onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))} required />
+              </label>
+              <label className="form-field">
+                <span>Giới tính</span>
+                <select value={profileForm.gender} onChange={(e) => setProfileForm((p) => ({ ...p, gender: e.target.value }))}>
+                  <option value="">-- Chọn --</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Ngày sinh</span>
+                <input type="date" value={profileForm.birthDate} onChange={(e) => setProfileForm((p) => ({ ...p, birthDate: e.target.value }))} />
+              </label>
+              <label className="form-field">
+                <span>Số điện thoại</span>
+                <input value={profileForm.phone} onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))} required />
+              </label>
+              <label className="form-field form-field-span">
+                <span>Địa chỉ</span>
+                <input value={profileForm.address} onChange={(e) => setProfileForm((p) => ({ ...p, address: e.target.value }))} />
+              </label>
+              <div className="module-row-actions form-field-span" style={{ gap: 8 }}>
+                <AppButton type="submit" disabled={submitting}>
+                  {submitting ? "Đang lưu..." : "Lưu thông tin"}
+                </AppButton>
+                <AppButton variant="ghost" type="button" onClick={() => setEditingProfile(false)}>
+                  Hủy
+                </AppButton>
+              </div>
+            </form>
+          )}
         </section>
 
+        {/* ====== CỘT PHẢI: Đổi mật khẩu ====== */}
         <section className="module-card">
           <h3 className="panel-title" style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             {React.createElement(MdLock as any, { size: 22 })}
             Đổi mật khẩu
           </h3>
-
-          {error ? <p className="alert-error">{error}</p> : null}
-          {success ? (
-            <p
-              style={{
-                color: "#16a34a",
-                background: "#dcfce7",
-                padding: "10px 12px",
-                borderRadius: 8,
-                margin: "0 0 12px"
-              }}
-            >
-              {success}
-            </p>
-          ) : null}
 
           <form className="form-grid" onSubmit={handleChangePassword}>
             <label className="form-field form-field-span">
@@ -150,13 +198,7 @@ const ProfilePage = () => {
                   placeholder="Nhập mật khẩu hiện tại"
                   required
                 />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowOldPassword((p) => !p)}
-                  aria-label={showOldPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  tabIndex={-1}
-                >
+                <button type="button" className="password-toggle-btn" onClick={() => setShowOldPassword((p) => !p)} tabIndex={-1}>
                   {React.createElement((showOldPassword ? MdVisibilityOff : MdVisibility) as any, { size: 20 })}
                 </button>
               </div>
@@ -172,13 +214,7 @@ const ProfilePage = () => {
                   required
                   minLength={4}
                 />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowNewPassword((p) => !p)}
-                  aria-label={showNewPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  tabIndex={-1}
-                >
+                <button type="button" className="password-toggle-btn" onClick={() => setShowNewPassword((p) => !p)} tabIndex={-1}>
                   {React.createElement((showNewPassword ? MdVisibilityOff : MdVisibility) as any, { size: 20 })}
                 </button>
               </div>
@@ -194,13 +230,7 @@ const ProfilePage = () => {
                   required
                   minLength={4}
                 />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowConfirmPassword((p) => !p)}
-                  aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  tabIndex={-1}
-                >
+                <button type="button" className="password-toggle-btn" onClick={() => setShowConfirmPassword((p) => !p)} tabIndex={-1}>
                   {React.createElement((showConfirmPassword ? MdVisibilityOff : MdVisibility) as any, { size: 20 })}
                 </button>
               </div>

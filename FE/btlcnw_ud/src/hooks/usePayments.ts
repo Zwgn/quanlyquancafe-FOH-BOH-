@@ -31,7 +31,7 @@ export const translatePaymentMethod = (method: string) => {
   const normalized = method.trim().toLowerCase();
   if (normalized === "cash") return "Tiền mặt";
   if (normalized === "card") return "Thẻ";
-  if (normalized === "ewallet" || normalized === "e-wallet") return "Ví điện tử";
+  if (normalized === "ewallet" || normalized === "e-wallet" || normalized === "online") return "Thanh toán online";
   return method || "-";
 };
 

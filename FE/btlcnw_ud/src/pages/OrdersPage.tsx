@@ -1,4 +1,4 @@
-﻿import React, { FormEvent } from "react";
+﻿import React, { FormEvent, useState } from "react";
 import { MdEdit, MdOutlineRemoveRedEye, MdPrint } from "react-icons/md";
 import AppButton from "../components/ui/AppButton";
 import AppModal from "../components/ui/AppModal";
@@ -9,9 +9,18 @@ import { getOrderStatusLabel, isPaidOrder } from "../utils/orderMapper";
 import { escapeHtmlText, openPrintWindow } from "../utils/printDocument";
 import "../assets/styles/orders.css";
 import { resolveImageUrl } from "../utils/imageUrl";
+import { uploadMenuImage } from "../api/menuApi";
+import type { PaymentMethod } from "../types/order";
+
+const QR_STORAGE_KEY = "cafe_qr_payment_url";
 
 const OrdersPage = () => {
   usePageTitle("Đơn hàng | Coffee Management System");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [checkoutOrderId, setCheckoutOrderId] = useState<string>("");
+  const [qrUrl, setQrUrl] = useState<string>(localStorage.getItem(QR_STORAGE_KEY) || "");
+  const [uploadingQr, setUploadingQr] = useState(false);
 
   const {
     orders,
@@ -503,7 +512,11 @@ const OrdersPage = () => {
 
                   {canCheckoutOrder(selectedOrder) ? (
                     <AppButton
-                      onClick={() => void handleCheckoutOrder(selectedOrder.id)}
+                      onClick={() => {
+                        setCheckoutOrderId(selectedOrder.id);
+                        setPaymentMethod("Cash");
+                        setShowPaymentModal(true);
+                      }}
                     >
                       Thanh toán
                     </AppButton>
@@ -520,6 +533,95 @@ const OrdersPage = () => {
             </div>
           </div>
         ) : null}
+      </AppModal>
+
+      {/* ====== MODAL CHỌN PHƯƠNG THỨC THANH TOÁN ====== */}
+      <AppModal
+        open={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title="Chọn phương thức thanh toán"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "8px 0" }}>
+          <label className="form-field">
+            <span>Phương thức</span>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              style={{ fontSize: 15, padding: "10px 12px" }}
+            >
+              <option value="Cash">Tiền mặt</option>
+              <option value="EWallet">Thanh toán online</option>
+            </select>
+          </label>
+
+          {paymentMethod === "EWallet" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>Quét mã QR để thanh toán</p>
+              {qrUrl ? (
+                <img
+                  src={resolveImageUrl(qrUrl)}
+                  alt="QR thanh toán"
+                  style={{
+                    width: 220, height: 220, objectFit: "contain",
+                    border: "1px solid #e5e7eb", borderRadius: 8, padding: 8
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 220, height: 220, display: "flex", alignItems: "center",
+                    justifyContent: "center", background: "#f3f4f6",
+                    borderRadius: 8, color: "#6c757d", fontSize: 14
+                  }}
+                >
+                  Chưa có mã QR
+                </div>
+              )}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      setUploadingQr(true);
+                      const url = await uploadMenuImage(file);
+                      setQrUrl(url);
+                      localStorage.setItem(QR_STORAGE_KEY, url);
+                    } catch { /* silent */ }
+                    finally { setUploadingQr(false); }
+                    e.target.value = "";
+                  }}
+                />
+                <span
+                  className="ui-button ui-button-ghost"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {uploadingQr ? "Đang tải..." : qrUrl ? "Đổi mã QR" : "Tải mã QR lên"}
+                </span>
+              </label>
+            </div>
+          ) : null}
+
+          <div className="module-row-actions" style={{ justifyContent: "flex-end", gap: 8 }}>
+            <AppButton
+              variant="ghost"
+              onClick={() => setShowPaymentModal(false)}
+            >
+              Hủy
+            </AppButton>
+            <AppButton
+              onClick={async () => {
+                await handleCheckoutOrder(checkoutOrderId, paymentMethod);
+                setShowPaymentModal(false);
+              }}
+            >
+              Xác nhận thanh toán
+            </AppButton>
+          </div>
+        </div>
       </AppModal>
     </div>
   );

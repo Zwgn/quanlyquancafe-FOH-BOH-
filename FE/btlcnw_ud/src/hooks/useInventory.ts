@@ -12,6 +12,7 @@ import { Ingredient } from "../types/ingredient";
 
 export interface IngredientRow extends Ingredient {
   supplierId: string;
+  supplierName: string;
 }
 
 export interface SupplierOption {
@@ -28,7 +29,8 @@ const mapIngredient = (input: unknown, index: number): IngredientRow => {
     name: String(row.name ?? row.Name ?? ""),
     unit: String(row.unit ?? row.Unit ?? ""),
     quantity: Number(row.quantity ?? row.Quantity ?? row.stockQuantity ?? row.StockQuantity ?? 0),
-    supplierId: String(row.supplierId ?? row.SupplierId ?? "")
+    supplierId: String(row.supplierId ?? row.SupplierId ?? ""),
+    supplierName: String(row.supplier ?? row.Supplier ?? row.supplierName ?? row.SupplierName ?? "")
   };
 };
 
